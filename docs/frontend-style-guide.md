@@ -1,6 +1,12 @@
 # Frontend Style Guide
 
-Frontend work must be image/Figma-reference driven. Current visual references are the 5 screenshots in `design/`.
+Frontend work must be Figma-first and screenshot-backed. The canonical design file is:
+
+```text
+https://www.figma.com/design/CjqygT7bVO6wEZOKjLOyyJ/cpho-ai-platform?node-id=0-1&t=x0oQGJwauCyLvW9W-1
+```
+
+The current Figma canvas is `Round 1 - CPHO Core Screens`. The 5 screenshots in `design/` are local fallback references when Figma is unavailable or when a PR needs static evidence.
 
 ## Visual Standard
 
@@ -35,6 +41,25 @@ Module expectations：
 
 ## Reference Screenshots
 
+Canonical Figma file：
+
+- File：`cpho-ai-platform`
+- Key：`CjqygT7bVO6wEZOKjLOyyJ`
+- Canvas：`Round 1 - CPHO Core Screens`
+- Root node：`0:1`
+- URL：`https://www.figma.com/design/CjqygT7bVO6wEZOKjLOyyJ/cpho-ai-platform?node-id=0-1&t=x0oQGJwauCyLvW9W-1`
+
+Known Figma frames：
+
+- App Shell / Navigation：`3:2`
+- AI Solver / Upload Confirm Analysis：`3:42`
+- Problem Bank / Table Detail：`3:123`
+- Article Plaza / Reader Detail：present in the same canvas
+- Personal Library / Table Detail：`3:322`
+- Editor / Rich Text Publish：`3:427`
+
+Local fallback screenshots：
+
 - AI Solver：`design/ChatGPT Image Apr 27, 2026, 02_57_54 PM (1).png`
 - Problem Bank：`design/ChatGPT Image Apr 27, 2026, 02_57_55 PM (2).png`
 - Article Plaza：`design/ChatGPT Image Apr 27, 2026, 02_57_55 PM (3).png`
@@ -45,21 +70,23 @@ Future stable references should be copied or exported to `docs/design/screenshot
 
 ## Figma-first Workflow
 
-Every frontend issue must reference one of：
+Every frontend issue should reference the canonical Figma file and the target frame node. If Figma is unavailable, it must reference one local screenshot under `design/` or `docs/design/screenshots/`.
 
-- Figma frame link
-- screenshot under `docs/design/screenshots/`
-- screenshot under `design/`
+Before implementation：
 
-Every frontend PR must include：
+- Use the Figma plugin/skill to read the target frame structure.
+- Translate Figma into project components rather than copying generated code blindly.
+- Preserve CPHO product rules even when a visual frame is incomplete.
 
-- reference design
+After implementation：
+
+- Include the reference Figma frame or fallback screenshot.
 - implementation screenshot or preview URL
 - visual differences
 - changed files
 - build/lint result
 
-Codex can operate Figma when explicitly asked：create frames、import screenshots、generate alternatives、compare implementation screenshots if tool support exists。
+Codex should use Figma plugin/skill when explicitly asked to inspect, create, edit, or compare Figma frames. Frontend PRs should use `figma-design-review` when visual fidelity is part of acceptance.
 
 ## Component Rules
 

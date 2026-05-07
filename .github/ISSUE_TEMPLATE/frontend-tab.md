@@ -10,6 +10,7 @@ labels: frontend, needs-design-reference
 
 ## Reference Design
 
+- Canonical Figma file: https://www.figma.com/design/CjqygT7bVO6wEZOKjLOyyJ/cpho-ai-platform?node-id=0-1&t=x0oQGJwauCyLvW9W-1
 - Figma frame:
 - Screenshot path:
 
@@ -43,5 +44,4 @@ labels: frontend, needs-design-reference
 - [ ] Build/lint passes.
 
 ## Risks
-
 

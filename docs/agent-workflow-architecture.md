@@ -23,6 +23,7 @@ docs/
 .github/ISSUE_TEMPLATE/
 .github/PULL_REQUEST_TEMPLATE.md
 .agents/skills/*/SKILL.md
+Figma canonical design file
 ```
 
 原因：
@@ -31,7 +32,32 @@ docs/
 - `docs/` 放产品、安全、UI、AI Solver 契约。
 - `.github/` 把任务和 PR 变成可验收流程。
 - `.agents/skills/` 放重复任务的操作手册，避免每次重新 prompt。
+- Figma 承担前端设计事实来源；代码实现必须从目标 frame 读取结构，再落到 Next.js/Tailwind 组件。
 - 不使用 `.claude/commands`，因为当前主 agent 是 Codex，命令流程用 issue/PR template 和 skills 承载。
+
+## Figma and Codex Collaboration
+
+Canonical design file：
+
+```text
+https://www.figma.com/design/CjqygT7bVO6wEZOKjLOyyJ/cpho-ai-platform?node-id=0-1&t=x0oQGJwauCyLvW9W-1
+```
+
+Figma file facts checked through the Figma plugin：
+
+- File key：`CjqygT7bVO6wEZOKjLOyyJ`
+- Root node：`0:1`
+- Canvas：`Round 1 - CPHO Core Screens`
+- Current core frames include App Shell / Navigation, AI Solver, Problem Bank, Article Plaza, Personal Library, and Editor.
+
+Frontend collaboration flow：
+
+1. Product rules come from `AGENTS.md` and `docs/product-spec.md`.
+2. Visual layout comes from the target Figma frame in the canonical file.
+3. Implementation uses Next.js, React, TypeScript, Tailwind CSS, and local component primitives.
+4. Codex must adapt Figma output to the project architecture; generated Figma code is reference material, not a direct paste target.
+5. Frontend verification compares the implementation screenshot or preview URL against the Figma frame.
+6. If Figma and product/security docs conflict, product/security docs win and the visual difference must be documented in the PR.
 
 ## Files Kept
 
@@ -57,13 +83,9 @@ docs/
 
 删除原因：这些文件把规则分散得太细，容易让 agent 不知道哪个文件是事实来源。必要内容已经合并进 `AGENTS.md`、`docs/ai-solver-spec.md`、`docs/frontend-style-guide.md` 和本文件。
 
-也删除了：
+当前保留 `figma-design-review` 作为前端视觉验收 skill。它只用于对照 Figma frame、设计截图和实现截图，不替代 `frontend-tab-builder` 的实现流程，也不替代 `playwright-ui-verifier` 的行为验收。
 
-- `.agents/skills/figma-design-review/SKILL.md`
-
-删除原因：当前保持 5 个高信号项目 skill。Figma review 被并入 `frontend-tab-builder` 和 `playwright-ui-verifier`，避免 skill 过多导致上下文噪音。
-
-## Five Repo-local Skills
+## Repo-local Skills
 
 ### `frontend-tab-builder`
 
@@ -89,6 +111,10 @@ docs/
 ### `playwright-ui-verifier`
 
 用于“不读代码，用行为验收”的浏览器验证。重点检查登录、权限、上传、标准答案 gate、折叠 sections、题库搜索、文章引用和个人库保存。
+
+### `figma-design-review`
+
+用于前端实现后的视觉验收。它对照 canonical Figma frame、`design/` 截图或实现截图检查布局、层级、dark UI 风格、右侧 panel、表格、折叠 sections 和不可用状态。
 
 ## Git and Agent Rules
 
@@ -125,6 +151,7 @@ docs/
 - 项目还没有应用代码，通用 skills 会增加噪音。
 - CPHO 平台有强产品规则，项目专用 skill 比通用 skill 更可靠。
 - 外部 skills 应先 review，再决定是否安装。
+- Figma plugin/skill 是前端设计协作的例外：它用于读取和验收 canonical design file，不替代项目产品、安全和权限契约。
 
 后续可以按需使用 `$skill-installer` 安装 curated 或实验 skill，但必须先确认不会覆盖本项目权限和安全流程。
 
