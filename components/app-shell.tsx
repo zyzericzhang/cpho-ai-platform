@@ -358,48 +358,240 @@ function WorkflowPanel({ active, role, compact = false }: { active: ModuleConfig
 }
 
 function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
+  const [sessionId, setSessionId] = useState("");
+  const [materialRole, setMaterialRole] = useState("combined");
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{ fileName: string; kind: string; sizeBytes: number }>>([]);
+  const [problemText, setProblemText] = useState(
+    "A uniform conducting rod of length L and mass m slides without friction on two parallel rails in a uniform magnetic field B. A constant force F is applied along the rails.",
+  );
+  const [diagramNotes, setDiagramNotes] = useState(
+    "Extraction is not connected yet. Confirm or edit diagram notes manually.",
+  );
+  const [standardAnswer, setStandardAnswer] = useState("");
+  const [confirmStandardAnswer, setConfirmStandardAnswer] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("Create a session, upload material, then confirm the extracted fields.");
+  const [gateMessage, setGateMessage] = useState("No standard answer, no AI solution.");
+  const [isBusy, setIsBusy] = useState(false);
+
+  const createSessionIfNeeded = async () => {
+    if (sessionId) {
+      return sessionId;
+    }
+
+    const response = await fetch("/api/ai-solver/sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Local AI Solver upload validation" }),
+    });
+    const payload = await response.json();
+
+    if (!response.ok) {
+      throw new Error(payload.error ?? "Unable to create session.");
+    }
+
+    setSessionId(payload.session.id);
+    return payload.session.id as string;
+  };
+
+  const handleUpload = async () => {
+    setIsBusy(true);
+    setStatusMessage("Validating upload on the server...");
+
+    try {
+      const nextSessionId = await createSessionIfNeeded();
+      const formData = new FormData();
+      formData.set("sessionId", nextSessionId);
+      formData.set("role", materialRole);
+      selectedFiles.forEach((file) => formData.append("files", file));
+
+      const response = await fetch("/api/ai-solver/uploads", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Upload validation failed.");
+      }
+
+      setUploadedFiles(payload.uploads);
+      setStatusMessage(`${payload.uploads.length} file(s) accepted. Extraction placeholder created; real extraction is not connected.`);
+      setDiagramNotes("Extraction is not connected yet. Confirm or edit diagram notes manually.");
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Upload failed.");
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleConfirm = async () => {
+    setIsBusy(true);
+
+    try {
+      const nextSessionId = await createSessionIfNeeded();
+      const response = await fetch("/api/ai-solver/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: nextSessionId,
+          problemText,
+          diagramNotes,
+          standardAnswer,
+          confirmStandardAnswer,
+        }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Confirmation failed.");
+      }
+
+      setStatusMessage(
+        payload.extraction.isStandardAnswerConfirmed
+          ? "Standard answer confirmed. Server gate can now allow the next analysis step."
+          : "Fields saved, but the standard answer is not confirmed.",
+      );
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Confirmation failed.");
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleAnalyzeGate = async () => {
+    setIsBusy(true);
+
+    try {
+      const nextSessionId = await createSessionIfNeeded();
+      const response = await fetch("/api/ai-solver/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: nextSessionId }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Analysis gate rejected.");
+      }
+
+      setGateMessage(
+        `Gate passed. Server-side provider configuration: ${payload.provider.configured ? "ready" : "not configured"}.`,
+      );
+    } catch (error) {
+      setGateMessage(error instanceof Error ? error.message : "Analysis gate rejected.");
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
   return (
     <>
       <section className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-zinc-100">1. Uploaded Materials</h2>
-          <button className="text-sm text-zinc-300 hover:text-zinc-50">Edit</button>
+          <span className="text-xs text-zinc-500">Server validation foundation</span>
         </div>
-        <div className="grid grid-cols-2 gap-3 max-[900px]:grid-cols-1">
-          <FileCard title="Problem Material" fileName="problem_001.jpg" status="Image . 842 KB" />
-          <FileCard title="Standard Answer Material" fileName="answer_001.pdf" status="PDF . 512 KB" />
+        <div className="grid grid-cols-[180px_minmax(0,1fr)_auto] gap-3 max-[900px]:grid-cols-1">
+          <select
+            value={materialRole}
+            onChange={(event) => setMaterialRole(event.target.value)}
+            className="h-10 rounded-md border border-zinc-800 bg-[#0b0f12] px-3 text-sm text-zinc-100 outline-none"
+          >
+            <option value="combined">Combined</option>
+            <option value="problem">Problem</option>
+            <option value="answer">Answer</option>
+          </select>
+          <input
+            type="file"
+            multiple
+            accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx"
+            onChange={(event) => setSelectedFiles(Array.from(event.target.files ?? []))}
+            className="h-10 rounded-md border border-zinc-800 bg-[#0b0f12] px-3 py-2 text-sm text-zinc-300 file:mr-3 file:rounded file:border-0 file:bg-zinc-800 file:px-2 file:py-1 file:text-xs file:text-zinc-100"
+          />
+          <button
+            onClick={handleUpload}
+            disabled={isBusy}
+            className="h-10 rounded-md border border-zinc-700 bg-zinc-100 px-3 text-sm font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Upload
+          </button>
         </div>
+        <div className="mt-3 grid grid-cols-2 gap-3 max-[900px]:grid-cols-1">
+          {uploadedFiles.length > 0 ? (
+            uploadedFiles.map((file) => (
+              <FileCard
+                key={file.fileName}
+                title={`${materialRole} material`}
+                fileName={file.fileName}
+                status={`${file.kind.toUpperCase()} / ${formatBytes(file.sizeBytes)}`}
+              />
+            ))
+          ) : (
+            <Notice
+              title="No uploaded material in this local session"
+              body="Use the upload control to exercise the server-side file count, MIME, extension, and size checks."
+            />
+          )}
+        </div>
+        <p className="mt-3 text-xs text-zinc-400">{statusMessage}</p>
         <p className="mt-3 text-xs text-zinc-500">Accepted formats: image, PDF, DOCX. Old .doc is not supported.</p>
       </section>
       <section className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-zinc-100">2. Confirm & Edit Extracted Text</h2>
-          <button className="text-sm text-zinc-300 hover:text-zinc-50">Edit all</button>
+          <span className="text-xs text-amber-300">Extraction not connected</span>
         </div>
         <div className="grid grid-cols-3 gap-3 max-[1120px]:grid-cols-1">
           <ExtractedTextCard
             title="Problem Text"
-            body="A uniform conducting rod of length L and mass m can slide without friction on two parallel rails separated by distance d. The system is in a uniform magnetic field B pointing vertically upward. A constant force F is applied to the rod along the rails."
+            body={problemText}
+            onChange={setProblemText}
           />
           <ExtractedTextCard
             title="Diagram Notes"
-            body="Two long parallel rails are separated by d. A conducting rod of length L connects the rails and moves to the right. Current induced in the rod creates a magnetic force opposing the motion."
+            body={diagramNotes}
+            onChange={setDiagramNotes}
           />
           <ExtractedTextCard
             title="Standard Answer"
-            body="Equation of motion: m dv/dt = F - (B^2 L^2 / R)v. Terminal speed: vt = FR / B^2 L^2. The confirmed standard answer unlocks structured analysis."
+            body={standardAnswer}
+            onChange={setStandardAnswer}
           />
         </div>
-        <div className="mt-4 flex justify-end">
-          <button className="h-9 rounded-md border border-zinc-700 bg-zinc-100 px-3 text-sm font-medium text-zinc-950">
-            {active.primaryAction}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <label className="flex items-center gap-2 text-sm text-zinc-300">
+            <input
+              type="checkbox"
+              checked={confirmStandardAnswer}
+              onChange={(event) => setConfirmStandardAnswer(event.target.checked)}
+              className="h-4 w-4 accent-zinc-100"
+            />
+            Confirm standard answer
+          </label>
+          <button
+            onClick={handleConfirm}
+            disabled={isBusy}
+            className="h-9 rounded-md border border-zinc-700 bg-zinc-100 px-3 text-sm font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Save confirmation
           </button>
         </div>
       </section>
       <section className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-4">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold">3. AI Analysis</h2>
-          <span className="text-xs text-emerald-400">Standard answer confirmed</span>
+          <span className="text-xs text-zinc-400">{active.primaryAction}</span>
+        </div>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-zinc-800 bg-[#0b0f12] p-3">
+          <p className="text-sm text-zinc-300">{gateMessage}</p>
+          <button
+            onClick={handleAnalyzeGate}
+            disabled={isBusy}
+            className="h-9 rounded-md border border-zinc-700 bg-zinc-100 px-3 text-sm font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Check server gate
+          </button>
         </div>
         <div className="space-y-1">
           {analysisSections.map((section) => (
@@ -426,14 +618,26 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
   );
 }
 
-function ExtractedTextCard({ title, body }: { title: string; body: string }) {
+function ExtractedTextCard({
+  title,
+  body,
+  onChange,
+}: {
+  title: string;
+  body: string;
+  onChange: (value: string) => void;
+}) {
   return (
     <article className="min-h-[210px] rounded-md border border-zinc-800 bg-[#0b0f12] p-3">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-zinc-100">{title}</h3>
-        <button className="text-xs text-zinc-400 hover:text-zinc-100">Edit</button>
+        <span className="text-xs text-zinc-500">Editable</span>
       </div>
-      <p className="text-sm leading-6 text-zinc-300">{body}</p>
+      <textarea
+        value={body}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-[158px] w-full resize-none rounded border border-zinc-800 bg-zinc-950 p-3 text-sm leading-6 text-zinc-300 outline-none"
+      />
     </article>
   );
 }
@@ -451,6 +655,14 @@ function FileCard({ title, fileName, status }: { title: string; fileName: string
       </div>
     </article>
   );
+}
+
+function formatBytes(sizeBytes: number) {
+  if (sizeBytes < 1024 * 1024) {
+    return `${Math.max(1, Math.round(sizeBytes / 1024))} KB`;
+  }
+
+  return `${(sizeBytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function ProblemTable({
