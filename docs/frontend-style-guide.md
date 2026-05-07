@@ -1,12 +1,12 @@
 # Frontend Style Guide
 
-Frontend work must be Figma-first, Build-web-app-assisted, and Vercel-preview-backed. The canonical design file is:
+Frontend work must be Figma-first, Build-web-app-assisted, and backed by local verification evidence. The canonical design file is:
 
 ```text
 https://www.figma.com/design/CjqygT7bVO6wEZOKjLOyyJ/cpho-ai-platform?node-id=0-1&t=x0oQGJwauCyLvW9W-1
 ```
 
-The current Figma canvas is `Round 1 - CPHO Core Screens`. The 5 screenshots in `design/` are local fallback references when Figma is unavailable or when a PR needs static evidence. Vercel preview URLs are the preferred shareable implementation reference once the app exists.
+The current Figma canvas is `Round 1 - CPHO Core Screens`. The 5 screenshots in `design/` are local fallback references when Figma is unavailable or when a PR needs static evidence. This project does not use Vercel; implementation evidence should come from local screenshots, recordings, browser verification notes, or a non-Vercel shared preview only if one is explicitly configured.
 
 ## Visual Standard
 
@@ -68,7 +68,7 @@ Local fallback screenshots：
 
 Future stable references should be copied or exported to `docs/design/screenshots/`.
 
-## Figma + Build Web App + Vercel Workflow
+## Figma + Build Web App Workflow
 
 Every frontend issue should reference the canonical Figma file and the target frame node. If Figma is unavailable, it must reference one local screenshot under `design/` or `docs/design/screenshots/`.
 
@@ -87,12 +87,12 @@ During implementation：
 After implementation：
 
 - Include the reference Figma frame or fallback screenshot.
-- Include an implementation screenshot and, when available, a Vercel preview URL.
+- Include an implementation screenshot, recording, or local browser verification notes.
 - visual differences
 - changed files
 - build/lint result
 
-Codex should use Figma plugin/skill when explicitly asked to inspect, create, edit, or compare Figma frames. Frontend PRs should use `figma-design-review` when visual fidelity is part of acceptance. Vercel preview is evidence for review, not a replacement for local lint/build or product/security checks.
+Codex should use Figma plugin/skill when explicitly asked to inspect, create, edit, or compare Figma frames. Frontend PRs should use `figma-design-review` when visual fidelity is part of acceptance. Local screenshots, recordings, or browser verification notes are review evidence, not a replacement for lint/build or product/security checks.
 
 ## Component Rules
 

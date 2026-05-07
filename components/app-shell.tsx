@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { type User } from "@supabase/supabase-js";
+import { useEffect, useMemo, useState } from "react";
 import {
   analysisSections,
   libraryItems,
@@ -11,6 +12,7 @@ import {
   type Role,
   type ShellState,
 } from "@/lib/shell-data";
+import { createClient } from "@/lib/supabase/client";
 
 const shellStates: ShellState[] = ["ready", "loading", "empty", "error", "permission"];
 
@@ -19,6 +21,55 @@ export function AppShell() {
   const [shellState, setShellState] = useState<ShellState>("ready");
   const [role, setRole] = useState<Role>("student");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [user, setUser] = useState<User | null>(null);
+
+  const supabase = createClient();
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+        if (profile) {
+          setRole(profile.role as Role);
+        }
+      }
+    };
+    getUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", session.user.id)
+            .single();
+          if (profile) {
+            setRole(profile.role as Role);
+          }
+        } else {
+          setRole("student");
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, [supabase]);
+
+  const handleLogin = async () => {
+    alert("In a real app, this would redirect to /login or open an auth modal.");
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
 
   const active = useMemo(
     () => modules.find((moduleItem) => moduleItem.id === activeModule) ?? modules[0],
@@ -27,7 +78,13 @@ export function AppShell() {
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#080b0d] text-zinc-100">
-      <TopBar activeModule={activeModule} onModuleChange={setActiveModule} />
+      <TopBar 
+        activeModule={activeModule} 
+        onModuleChange={setActiveModule} 
+        user={user}
+        onLogout={handleLogout}
+        onLogin={handleLogin}
+      />
       <div className="grid min-h-[calc(100vh-54px)] grid-cols-[246px_minmax(0,1fr)_280px] max-[1080px]:grid-cols-[220px_minmax(0,1fr)] max-[760px]:grid-cols-1">
         <Sidebar active={active} role={role} />
         <section className="min-w-0 border-r border-zinc-800/90 bg-[#080b0d] px-7 py-6 max-[760px]:px-4">
@@ -37,6 +94,7 @@ export function AppShell() {
             onRoleChange={setRole}
             shellState={shellState}
             onStateChange={setShellState}
+            isAuthMode={!!user}
           />
           <StateSurface
             active={active}
@@ -55,9 +113,15 @@ export function AppShell() {
 function TopBar({
   activeModule,
   onModuleChange,
+  user,
+  onLogout,
+  onLogin,
 }: {
   activeModule: ModuleId;
   onModuleChange: (moduleId: ModuleId) => void;
+  user: User | null;
+  onLogout: () => void;
+  onLogin: () => void;
 }) {
   return (
     <header className="grid h-[54px] grid-cols-[246px_minmax(0,1fr)_180px] items-center border-b border-zinc-800/90 bg-[#0b0f12]/95 max-[1080px]:grid-cols-[220px_minmax(0,1fr)_128px] max-[760px]:h-auto max-[760px]:grid-cols-1 max-[760px]:gap-3 max-[760px]:px-4 max-[760px]:py-3">
@@ -85,11 +149,16 @@ function TopBar({
         ))}
       </nav>
       <div className="flex items-center justify-end gap-3 px-5 text-xs text-zinc-400 max-[760px]:hidden">
-        <span>Search</span>
-        <span>Alerts</span>
-        <span className="grid h-7 w-7 place-items-center rounded-full bg-zinc-800 text-zinc-100">
-          YS
-        </span>
+        {user ? (
+          <>
+            <button onClick={onLogout} className="hover:text-zinc-100">Logout</button>
+            <span className="grid h-7 w-7 place-items-center rounded-full bg-zinc-800 text-zinc-100" title={user.email}>
+              {user.email?.[0].toUpperCase()}
+            </span>
+          </>
+        ) : (
+          <button onClick={onLogin} className="hover:text-zinc-100">Login</button>
+        )}
       </div>
     </header>
   );
@@ -148,12 +217,14 @@ function ModuleHeader({
   onRoleChange,
   shellState,
   onStateChange,
+  isAuthMode,
 }: {
   active: ModuleConfig;
   role: Role;
   onRoleChange: (role: Role) => void;
   shellState: ShellState;
   onStateChange: (state: ShellState) => void;
+  isAuthMode: boolean;
 }) {
   return (
     <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
@@ -171,19 +242,24 @@ function ModuleHeader({
         </p>
       </div>
       <div className="flex flex-col items-end gap-3 max-[760px]:items-start">
-        <div className="flex rounded-md border border-zinc-800 bg-zinc-950 p-1 text-xs">
-          {(["student", "admin"] as Role[]).map((option) => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => onRoleChange(option)}
-              className={`rounded px-3 py-1.5 capitalize ${
-                role === option ? "bg-zinc-100 text-zinc-950" : "text-zinc-400 hover:text-zinc-100"
-              }`}
-            >
-              {option}
-            </button>
-          ))}
+        <div className="flex flex-col items-end gap-1">
+          {isAuthMode && <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium">Profile Role</span>}
+          <div className="flex rounded-md border border-zinc-800 bg-zinc-950 p-1 text-xs">
+            {(["student", "admin"] as Role[]).map((option) => (
+              <button
+                key={option}
+                type="button"
+                disabled={isAuthMode}
+                onClick={() => onRoleChange(option)}
+                className={`rounded px-3 py-1.5 capitalize ${
+                  role === option ? "bg-zinc-100 text-zinc-950" : "text-zinc-400 hover:text-zinc-100"
+                } ${isAuthMode ? "cursor-default" : ""}`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+          {!isAuthMode && <span className="text-[10px] text-zinc-500 italic">Preview mode: selector enabled</span>}
         </div>
         <div className="flex flex-wrap justify-end gap-1 text-xs max-[760px]:justify-start">
           {shellStates.map((state) => (

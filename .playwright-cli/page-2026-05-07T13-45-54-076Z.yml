@@ -1,0 +1,203 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]: C
+        - generic [ref=e6]: CPHO AI Training System
+      - navigation [ref=e7]:
+        - button "AI Solver" [ref=e8]: AI Solver
+        - button "Problem Bank" [ref=e10]
+        - button "Article Plaza" [ref=e11]
+        - button "Personal Library" [ref=e12]
+      - generic [ref=e13]:
+        - generic [ref=e14]: Search
+        - generic [ref=e15]: Alerts
+        - generic [ref=e16]: YS
+    - generic [ref=e17]:
+      - complementary [ref=e18]:
+        - generic [ref=e19]:
+          - generic [ref=e20]:
+            - generic [ref=e21]:
+              - generic [ref=e22]: AI Solver
+              - generic [ref=e23]: Collapse
+            - generic [ref=e24]:
+              - button "New Analysis" [ref=e25]:
+                - generic [ref=e26]: New Analysis
+              - button "Sessions 12" [ref=e27]:
+                - generic [ref=e28]: Sessions
+                - generic [ref=e29]: "12"
+              - button "Uploaded Materials" [ref=e30]:
+                - generic [ref=e31]: Uploaded Materials
+              - button "Feedback" [ref=e32]:
+                - generic [ref=e33]: Feedback
+          - generic [ref=e34]:
+            - generic [ref=e35]:
+              - generic [ref=e36]: Problem Bank
+              - generic [ref=e37]: Collapse
+            - generic [ref=e38]:
+              - button "Browse Problems" [ref=e39]:
+                - generic [ref=e40]: Browse Problems
+              - button "By Topic" [ref=e41]:
+                - generic [ref=e42]: By Topic
+              - button "By Competition" [ref=e43]:
+                - generic [ref=e44]: By Competition
+              - button "My Collections" [ref=e45]:
+                - generic [ref=e46]: My Collections
+              - button "Upload paper" [disabled] [ref=e47]:
+                - generic [ref=e48]: Upload paper
+              - button "Create problem" [disabled] [ref=e49]:
+                - generic [ref=e50]: Create problem
+          - generic [ref=e51]:
+            - generic [ref=e52]:
+              - generic [ref=e53]: Article Plaza
+              - generic [ref=e54]: Collapse
+            - generic [ref=e55]:
+              - button "Latest Articles" [ref=e56]:
+                - generic [ref=e57]: Latest Articles
+              - button "By Topic" [ref=e58]:
+                - generic [ref=e59]: By Topic
+              - button "By Competition" [ref=e60]:
+                - generic [ref=e61]: By Competition
+              - button "Top Viewed" [ref=e62]:
+                - generic [ref=e63]: Top Viewed
+          - generic [ref=e64]:
+            - generic [ref=e65]:
+              - generic [ref=e66]: Personal Library
+              - generic [ref=e67]: Collapse
+            - generic [ref=e68]:
+              - button "My Problems" [ref=e69]:
+                - generic [ref=e70]: My Problems
+              - button "My Articles" [ref=e71]:
+                - generic [ref=e72]: My Articles
+              - button "Bookmarks" [ref=e73]:
+                - generic [ref=e74]: Bookmarks
+              - button "Notes" [ref=e75]:
+                - generic [ref=e76]: Notes
+        - generic [ref=e77]:
+          - generic [ref=e78]: Settings
+          - generic [ref=e79]: Collapse
+      - generic [ref=e80]:
+        - generic [ref=e81]:
+          - generic [ref=e82]:
+            - paragraph [ref=e83]: AI Solver / Session / 2026-05-07 20:41
+            - generic [ref=e84]:
+              - heading "Magnetic Rod Problem" [level=1] [ref=e85]
+              - generic [ref=e86]: Ready for analysis
+            - paragraph [ref=e88]: Created 2 minutes ago . Updated just now
+          - generic [ref=e89]:
+            - generic [ref=e90]:
+              - button "student" [ref=e91]
+              - button "admin" [ref=e92]
+            - generic [ref=e93]:
+              - button "ready" [ref=e94]
+              - button "loading" [ref=e95]
+              - button "empty" [ref=e96]
+              - button "error" [ref=e97]
+              - button "permission" [ref=e98]
+        - generic [ref=e99]:
+          - generic [ref=e100]:
+            - generic [ref=e101]:
+              - heading "1. Uploaded Materials" [level=2] [ref=e102]
+              - button "Edit" [ref=e103]
+            - generic [ref=e104]:
+              - article [ref=e105]:
+                - paragraph [ref=e106]: Problem Material
+                - generic [ref=e107]:
+                  - generic [ref=e108]:
+                    - paragraph [ref=e109]: problem_001.jpg
+                    - paragraph [ref=e110]: Image . 842 KB
+                  - generic [ref=e111]: Ready
+              - article [ref=e112]:
+                - paragraph [ref=e113]: Standard Answer Material
+                - generic [ref=e114]:
+                  - generic [ref=e115]:
+                    - paragraph [ref=e116]: answer_001.pdf
+                    - paragraph [ref=e117]: PDF . 512 KB
+                  - generic [ref=e118]: Ready
+            - paragraph [ref=e119]: "Accepted formats: image, PDF, DOCX. Old .doc is not supported."
+          - generic [ref=e120]:
+            - generic [ref=e121]:
+              - heading "2. Confirm & Edit Extracted Text" [level=2] [ref=e122]
+              - button "Edit all" [ref=e123]
+            - generic [ref=e124]:
+              - article [ref=e125]:
+                - generic [ref=e126]:
+                  - heading "Problem Text" [level=3] [ref=e127]
+                  - button "Edit" [ref=e128]
+                - paragraph [ref=e129]: A uniform conducting rod of length L and mass m can slide without friction on two parallel rails separated by distance d. The system is in a uniform magnetic field B pointing vertically upward. A constant force F is applied to the rod along the rails.
+              - article [ref=e130]:
+                - generic [ref=e131]:
+                  - heading "Diagram Notes" [level=3] [ref=e132]
+                  - button "Edit" [ref=e133]
+                - paragraph [ref=e134]: Two long parallel rails are separated by d. A conducting rod of length L connects the rails and moves to the right. Current induced in the rod creates a magnetic force opposing the motion.
+              - article [ref=e135]:
+                - generic [ref=e136]:
+                  - heading "Standard Answer" [level=3] [ref=e137]
+                  - button "Edit" [ref=e138]
+                - paragraph [ref=e139]: "Equation of motion: m dv/dt = F - (B^2 L^2 / R)v. Terminal speed: vt = FR / B^2 L^2. The confirmed standard answer unlocks structured analysis."
+            - button "Run structured analysis" [ref=e141]
+          - generic [ref=e142]:
+            - generic [ref=e143]:
+              - heading "3. AI Analysis" [level=2] [ref=e144]
+              - generic [ref=e145]: Standard answer confirmed
+            - generic [ref=e146]:
+              - group [ref=e147]:
+                - generic "Step-by-step derivation" [ref=e148] [cursor=pointer]
+              - group [ref=e149]:
+                - generic "Physical reasoning reconstruction" [ref=e150] [cursor=pointer]
+              - group [ref=e151]:
+                - generic "Related models / similar problems" [ref=e152] [cursor=pointer]
+              - group [ref=e153]:
+                - generic "Related articles" [ref=e154] [cursor=pointer]
+              - group [ref=e155]:
+                - generic "Key handling" [ref=e156] [cursor=pointer]
+              - group [ref=e157]:
+                - generic "Write article" [ref=e158] [cursor=pointer]
+              - group [ref=e159]:
+                - generic "Add to personal library" [ref=e160] [cursor=pointer]
+          - generic [ref=e161]:
+            - generic [ref=e162]:
+              - heading "Foundation Controls" [level=2] [ref=e163]
+              - generic [ref=e164]: "Issue #1 foundation state"
+            - generic [ref=e165]:
+              - button "Run structured analysis" [ref=e166]
+              - button "Edit extracted text" [ref=e167]
+              - button "Admin-only action" [ref=e168]
+          - generic [ref=e169]:
+            - heading "Follow-up Q&A" [level=2] [ref=e170]
+            - textbox "Ask a follow-up question about this problem or analysis..." [ref=e171]
+      - complementary [ref=e172]:
+        - generic [ref=e173]:
+          - heading "Problem Info" [level=2] [ref=e174]
+          - generic [ref=e175]:
+            - generic [ref=e176]:
+              - paragraph [ref=e177]: Topic
+              - paragraph [ref=e178]: Electromagnetism
+            - generic [ref=e179]:
+              - paragraph [ref=e180]: Source
+              - paragraph [ref=e181]: IPhO 2016, Q2
+            - generic [ref=e182]:
+              - paragraph [ref=e183]: Difficulty
+              - paragraph [ref=e184]: Hard
+            - generic [ref=e185]:
+              - paragraph [ref=e186]: Role preview
+              - paragraph [ref=e187]: student
+            - generic [ref=e188]:
+              - paragraph [ref=e189]: State
+              - paragraph [ref=e190]: ready
+        - generic [ref=e191]:
+          - generic [ref=e192]:
+            - heading "Session Notes" [level=2] [ref=e193]
+            - button "Edit" [ref=e194]
+          - textbox "Add your notes for this session..." [ref=e195]
+        - generic [ref=e196]:
+          - heading "Actions" [level=2] [ref=e197]
+          - generic [ref=e198]:
+            - button "Save session" [ref=e199]
+            - button "Create article draft" [ref=e200]
+            - button "Add problem to library" [ref=e201]
+            - button "Export analysis (PDF)" [ref=e202]
+            - button "Share session" [ref=e203]
+            - button "Delete draft" [ref=e204]
+        - paragraph [ref=e205]: Frontend-only foundation. Backend permissions, RLS, storage, and AI provider wiring are not implemented.
+  - alert [ref=e206]

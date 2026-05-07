@@ -25,7 +25,7 @@ docs/
 .agents/skills/*/SKILL.md
 Figma canonical design file
 Build web app implementation loop
-Vercel preview evidence
+Local verification evidence
 ```
 
 原因：
@@ -35,10 +35,10 @@ Vercel preview evidence
 - `.github/` 把任务和 PR 变成可验收流程。
 - `.agents/skills/` 放重复任务的操作手册，避免每次重新 prompt。
 - Figma 承担前端设计事实来源；代码实现必须从目标 frame 读取结构，再落到 Next.js/Tailwind 组件。
-- Build web app/Codex 承担实际前端实现迭代；Vercel preview 承担可分享、可审查的 UI 证据。
+- Build web app/Codex 承担实际前端实现迭代；本地截图、录屏和浏览器验证记录承担可审查的 UI 证据。
 - 不使用 `.claude/commands`，因为当前主 agent 是 Codex，命令流程用 issue/PR template 和 skills 承载。
 
-## Figma, Build Web App, and Vercel Collaboration
+## Figma and Build Web App Collaboration
 
 Canonical design file：
 
@@ -60,16 +60,16 @@ Frontend collaboration flow：
 3. Build web app/Codex iterates the real Next.js implementation in this repository.
 4. Implementation uses Next.js, React, TypeScript, Tailwind CSS, and local component primitives.
 5. Codex must adapt Figma output to the project architecture; generated Figma code is reference material, not a direct paste target.
-6. Vercel preview provides the shareable implementation URL for visual review once deployment is configured.
-7. Frontend verification compares the Vercel preview or implementation screenshot against the Figma frame.
+6. Local screenshots, recordings, or browser verification notes provide implementation evidence for visual review.
+7. Frontend verification compares the implementation evidence against the Figma frame.
 8. If Figma and product/security docs conflict, product/security docs win and the visual difference must be documented in the PR.
 
 Boundaries：
 
 - Figma is the source for visual intent, not database permissions or AI behavior.
 - Build web app can speed up UI iteration, but generated output must still obey CPHO product rules and repo architecture.
-- Vercel preview is review evidence, not proof that auth, RLS, AI provider safety, or owner boundaries are correct.
-- Local lint/build and relevant manual verification remain required even when a Vercel preview exists.
+- UI evidence is not proof that auth, RLS, AI provider safety, or owner boundaries are correct.
+- Local lint/build and relevant manual verification remain required even when shared preview evidence exists.
 
 ## Files Kept
 
@@ -79,7 +79,7 @@ Boundaries：
 - `docs/ai-solver-spec.md`：AI Solver、OpenRouter/Gemini provider、retrieval 边界。
 - `docs/permission-matrix.md`：student/admin 权限和 RLS 计划。
 - `docs/backend-risk-checklist.md`：后端、上传、AI key、RLS、费用风险审查。
-- `docs/frontend-style-guide.md`：Figma + Build web app + Vercel preview 驱动的前端流程。
+- `docs/frontend-style-guide.md`：Figma + Build web app + 本地验证证据驱动的前端流程。
 - `docs/agent-workflow-architecture.md`：本文件，解释架构。
 
 原始模块规格仍保留在 `docs/Overview.md`、`docs/v1-overview (1).md`、`docs/ai-solver.md`、`docs/problem-bank.md`、`docs/article-square.md`、`docs/editor.md`、`docs/personal-library.md`，用于追溯产品来源。
@@ -101,7 +101,7 @@ Boundaries：
 
 ### `frontend-tab-builder`
 
-用于构建 AI Solver、Problem Bank、Article Plaza、Personal Library、Editor、Admin 页面。它强制前端任务先说明目标用户、页面目标、主要动作、状态和验收标准，并要求 Figma reference、实现截图和可用时的 Vercel preview 证据。
+用于构建 AI Solver、Problem Bank、Article Plaza、Personal Library、Editor、Admin 页面。它强制前端任务先说明目标用户、页面目标、主要动作、状态和验收标准，并要求 Figma reference、实现截图、录屏或本地浏览器验证证据。
 
 ### `backend-permission-review`
 
@@ -126,7 +126,7 @@ Boundaries：
 
 ### `figma-design-review`
 
-用于前端实现后的视觉验收。它对照 canonical Figma frame、`design/` 截图、实现截图或 Vercel preview 检查布局、层级、dark UI 风格、右侧 panel、表格、折叠 sections 和不可用状态。
+用于前端实现后的视觉验收。它对照 canonical Figma frame、`design/` 截图、实现截图、录屏或本地预览检查布局、层级、dark UI 风格、右侧 panel、表格、折叠 sections 和不可用状态。
 
 ## Git and Agent Rules
 
@@ -163,7 +163,7 @@ Boundaries：
 - 项目还没有应用代码，通用 skills 会增加噪音。
 - CPHO 平台有强产品规则，项目专用 skill 比通用 skill 更可靠。
 - 外部 skills 应先 review，再决定是否安装。
-- Figma plugin/skill 和 Vercel 相关能力是前端设计协作的例外：它们用于读取设计、迭代 UI、产出 preview 证据，不替代项目产品、安全和权限契约。
+- Figma plugin/skill 是前端设计协作的例外：它用于读取设计和支持 UI 对照验收，不替代项目产品、安全和权限契约。本项目不默认使用 Vercel 相关能力。
 
 后续可以按需使用 `$skill-installer` 安装 curated 或实验 skill，但必须先确认不会覆盖本项目权限和安全流程。
 
