@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { OPENROUTER_CONFIG } from "@/lib/ai-solver/config";
+import { getOpenRouterConfig } from "@/lib/ai-solver/config";
 import { assertAnalysisGate } from "@/lib/ai-solver/local-store";
 import { getRequestUserId } from "@/lib/ai-solver/request-auth";
 
@@ -13,11 +13,12 @@ export async function POST(request: NextRequest) {
     }
 
     const gate = assertAnalysisGate(body.sessionId, userId);
+    const openRouterConfig = getOpenRouterConfig();
 
     return NextResponse.json({
       gate,
       provider: {
-        configured: OPENROUTER_CONFIG.hasApiKey,
+        configured: openRouterConfig.hasApiKey,
       },
       message: "Analysis provider call is intentionally deferred to the OpenRouter/Gemini implementation issue.",
     });

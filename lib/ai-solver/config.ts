@@ -1,10 +1,15 @@
 export const AI_SOLVER_UPLOAD_BUCKET = "ai-solver-uploads";
 
-export const OPENROUTER_CONFIG = {
-  baseUrl: process.env.OPENROUTER_BASE_URL ?? "https://openrouter.ai/api/v1",
-  model: process.env.OPENROUTER_MODEL ?? "google/gemini-3.1-pro-preview",
-  hasApiKey: Boolean(process.env.OPENROUTER_API_KEY),
-};
+export const DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+export const DEFAULT_OPENROUTER_MODEL = "google/gemini-3.1-pro-preview";
+
+export function getOpenRouterConfig() {
+  return {
+    baseUrl: process.env.OPENROUTER_BASE_URL || DEFAULT_OPENROUTER_BASE_URL,
+    model: process.env.OPENROUTER_MODEL || DEFAULT_OPENROUTER_MODEL,
+    hasApiKey: Boolean(process.env.OPENROUTER_API_KEY),
+  };
+}
 
 export const AI_SOLVER_LIMITS = {
   maxImageCount: 10,

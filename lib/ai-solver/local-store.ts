@@ -1,4 +1,4 @@
-import { AI_SOLVER_UPLOAD_BUCKET } from "./config";
+import { AI_SOLVER_UPLOAD_BUCKET, getOpenRouterConfig } from "./config";
 import type {
   AiSolverConfirmationInput,
   AiSolverSession,
@@ -127,7 +127,7 @@ export function assertAnalysisGate(sessionId: string, userId: string) {
 
   return {
     allowed: true,
-    providerReady: Boolean(process.env.OPENROUTER_API_KEY),
+    providerReady: getOpenRouterConfig().hasApiKey,
     retrievalStatus: {
       similarProblems: "not_connected",
       relatedArticles: "not_connected",
