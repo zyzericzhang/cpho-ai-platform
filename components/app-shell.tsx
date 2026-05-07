@@ -1,10 +1,11 @@
 "use client";
 
 import { type User } from "@supabase/supabase-js";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   analysisSections,
-  libraryItems,
+  articles,
+  libraryGroups,
   modules,
   problems,
   type ModuleConfig,
@@ -85,7 +86,7 @@ export function AppShell() {
         onLogout={handleLogout}
         onLogin={handleLogin}
       />
-      <div className="grid min-h-[calc(100vh-54px)] grid-cols-[246px_minmax(0,1fr)_280px] max-[1080px]:grid-cols-[220px_minmax(0,1fr)] max-[760px]:grid-cols-1">
+      <div className="grid min-h-[calc(100vh-54px)] grid-cols-[246px_minmax(0,1fr)_300px] max-[1180px]:grid-cols-[220px_minmax(0,1fr)] max-[760px]:grid-cols-1">
         <Sidebar active={active} role={role} />
         <section className="min-w-0 border-r border-zinc-800/90 bg-[#080b0d] px-7 py-6 max-[760px]:px-4">
           <ModuleHeader
@@ -126,8 +127,8 @@ function TopBar({
   return (
     <header className="grid h-[54px] grid-cols-[246px_minmax(0,1fr)_180px] items-center border-b border-zinc-800/90 bg-[#0b0f12]/95 max-[1080px]:grid-cols-[220px_minmax(0,1fr)_128px] max-[760px]:h-auto max-[760px]:grid-cols-1 max-[760px]:gap-3 max-[760px]:px-4 max-[760px]:py-3">
       <div className="flex items-center gap-3 px-5">
-        <span className="grid h-5 w-5 place-items-center rounded-[5px] border border-zinc-500 text-[10px] font-semibold">
-          C
+        <span className="grid h-5 w-5 place-items-center rounded-[5px] border border-zinc-500 text-[10px] font-semibold text-zinc-100">
+          CP
         </span>
         <span className="text-sm font-semibold tracking-normal">CPHO AI Training System</span>
       </div>
@@ -149,6 +150,12 @@ function TopBar({
         ))}
       </nav>
       <div className="flex items-center justify-end gap-3 px-5 text-xs text-zinc-400 max-[760px]:hidden">
+        <button className="grid h-7 w-7 place-items-center rounded-md border border-transparent hover:border-zinc-800 hover:text-zinc-100" title="Search">
+          /
+        </button>
+        <button className="grid h-7 w-7 place-items-center rounded-md border border-transparent hover:border-zinc-800 hover:text-zinc-100" title="Notifications">
+          !
+        </button>
         {user ? (
           <>
             <button onClick={onLogout} className="hover:text-zinc-100">Logout</button>
@@ -171,8 +178,13 @@ function Sidebar({ active, role }: { active: ModuleConfig; role: Role }) {
         {modules.map((moduleItem) => (
           <section key={moduleItem.id} className="space-y-2">
             <div className="flex items-center justify-between text-sm font-semibold text-zinc-100">
-              <span>{moduleItem.label}</span>
-            <span className="text-zinc-500">Collapse</span>
+              <span className="flex items-center gap-2">
+                <span className="grid h-5 w-5 place-items-center rounded border border-zinc-700 text-[10px] text-zinc-400">
+                  {moduleItem.label.slice(0, 1)}
+                </span>
+                {moduleItem.label}
+              </span>
+              <span className="text-xs text-zinc-500">Collapse</span>
             </div>
             <div className="space-y-1">
               {moduleItem.sidebar.map((item) => {
@@ -190,7 +202,10 @@ function Sidebar({ active, role }: { active: ModuleConfig; role: Role }) {
                     } ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
                     title={disabled ? "Admin role required" : item.label}
                   >
-                    <span>{item.label}</span>
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="h-1.5 w-1.5 rounded-full border border-zinc-600" />
+                      <span className="truncate">{item.label}</span>
+                    </span>
                     {item.badge ? (
                       <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-xs text-zinc-300">
                         {item.badge}
@@ -672,93 +687,195 @@ function ProblemTable({
   selectedIndex: number;
   onSelectedIndexChange: (index: number) => void;
 }) {
+  const selected = problems[selectedIndex] ?? problems[0];
+
   return (
-    <section className="rounded-lg border border-zinc-800 bg-zinc-950/55">
-      <div className="border-b border-zinc-800 p-3">
+    <section className="space-y-3">
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-3">
         <input
           className="h-10 w-full rounded-md border border-zinc-800 bg-[#0b0f12] px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600"
           placeholder="Search problems by title, topic, keyword, or source..."
         />
+        <div className="mt-3 grid grid-cols-5 gap-2 text-xs max-[980px]:grid-cols-2">
+          {["All years", "All institutions", "All topics", "All types", "All tags"].map((filter) => (
+            <button
+              key={filter}
+              className="h-9 rounded-md border border-zinc-800 bg-[#0b0f12] px-3 text-left text-zinc-300 hover:text-zinc-50"
+            >
+              {filter}
+            </button>
+          ))}
+        </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[760px] text-left text-sm">
-          <thead className="text-xs text-zinc-500">
-            <tr>
-              <th className="px-4 py-3 font-medium">Problem</th>
-              <th className="px-4 py-3 font-medium">Source</th>
-              <th className="px-4 py-3 font-medium">Year</th>
-              <th className="px-4 py-3 font-medium">Topics</th>
-              <th className="px-4 py-3 font-medium">Difficulty</th>
-            </tr>
-          </thead>
-          <tbody>
-            {problems.map((problem, index) => (
-              <tr
-                key={problem.title}
-                onClick={() => onSelectedIndexChange(index)}
-                className={`cursor-pointer border-t border-zinc-800 ${
-                  selectedIndex === index ? "bg-zinc-800/55" : "hover:bg-zinc-900"
-                }`}
-              >
-                <td className="px-4 py-3 text-zinc-100">{problem.title}</td>
-                <td className="px-4 py-3 text-zinc-400">{problem.source}</td>
-                <td className="px-4 py-3 text-zinc-400">{problem.year}</td>
-                <td className="px-4 py-3">
-                  <TagList tags={problem.topics} />
-                </td>
-                <td className="px-4 py-3">
-                  <span className="rounded border border-red-500/50 px-2 py-0.5 text-xs text-red-300">
-                    {problem.difficulty}
-                  </span>
-                </td>
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950/55">
+        <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3 text-xs text-zinc-500">
+          <span>Showing 1-10 of 1,284 problems</span>
+          <span>Rows per page: 10</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[880px] text-left text-sm">
+            <thead className="text-xs text-zinc-500">
+              <tr>
+                <th className="w-10 px-4 py-3 font-medium"> </th>
+                <th className="px-4 py-3 font-medium">Problem</th>
+                <th className="px-4 py-3 font-medium">Source</th>
+                <th className="px-4 py-3 font-medium">Year</th>
+                <th className="px-4 py-3 font-medium">Topics</th>
+                <th className="px-4 py-3 font-medium">Difficulty</th>
+                <th className="px-4 py-3 font-medium">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {problems.map((problem, index) => (
+                <tr
+                  key={problem.title}
+                  onClick={() => onSelectedIndexChange(index)}
+                  className={`cursor-pointer border-t border-zinc-800 ${
+                    selectedIndex === index ? "bg-zinc-800/55" : "hover:bg-zinc-900"
+                  }`}
+                >
+                  <td className="px-4 py-3 text-zinc-500">{index + 1}</td>
+                  <td className="px-4 py-3 text-zinc-100">{problem.title}</td>
+                  <td className="px-4 py-3 text-zinc-400">{problem.source}</td>
+                  <td className="px-4 py-3 text-zinc-400">{problem.year}</td>
+                  <td className="px-4 py-3">
+                    <TagList tags={problem.topics.slice(0, 2)} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <DifficultyBadge difficulty={problem.difficulty} />
+                  </td>
+                  <td className="px-4 py-3 text-xs text-zinc-300">
+                    <div className="flex gap-3">
+                      <button>Open</button>
+                      <button>Analyze</button>
+                      <button>Save</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div className="grid grid-cols-[minmax(0,1fr)_280px] gap-3 max-[980px]:grid-cols-1">
+        <section className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-zinc-100">Problem Preview</h2>
+            <span className="rounded border border-zinc-700 px-2 py-0.5 text-xs text-zinc-400">Selected</span>
+          </div>
+          <p className="max-w-3xl text-sm leading-6 text-zinc-300">
+            A uniform conducting rod of length L and mass m can slide without friction on two parallel horizontal rails
+            separated by distance d. The system is in a uniform magnetic field B directed upward. A constant force F is
+            applied to the rod along the rails.
+          </p>
+          <div className="mt-4 grid grid-cols-2 gap-3 max-[760px]:grid-cols-1">
+            <FileCard title="Standard Answer" fileName="answer_001.pdf" status="PDF / 512 KB" />
+            <FileCard title="Diagram" fileName="diagram_001.png" status="PNG / 84 KB" />
+          </div>
+        </section>
+        <section className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-4">
+          <h2 className="mb-3 text-sm font-semibold text-zinc-100">Selected Problem</h2>
+          <div className="space-y-3 text-sm">
+            <Detail label="Title" value={selected.title} />
+            <Detail label="Institution" value={selected.institution} />
+            <Detail label="Type" value={selected.type} />
+            <Detail label="Model tags" value={selected.modelTags.join(", ")} />
+          </div>
+        </section>
       </div>
     </section>
   );
 }
 
 function ArticleReader() {
+  const selectedArticle = articles[0];
+
   return (
-    <section className="grid grid-cols-[280px_minmax(0,1fr)] rounded-lg border border-zinc-800 bg-zinc-950/55 max-[900px]:grid-cols-1">
-      <div className="border-r border-zinc-800 max-[900px]:border-r-0 max-[900px]:border-b">
-        {["Uniform Magnetic Field Between Parallel Conducting Rails", "Lenz's Law and Induced Current Direction", "Energy Stored in an Inductor"].map(
-          (title, index) => (
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <input
+          className="h-10 min-w-[280px] flex-1 rounded-md border border-zinc-800 bg-[#0b0f12] px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600"
+          placeholder="Search articles by title, author, topic, or model..."
+        />
+        <button className="h-10 rounded-md border border-zinc-700 bg-zinc-100 px-3 text-sm font-medium text-zinc-950">
+          Write Article
+        </button>
+      </div>
+      <div className="grid grid-cols-[280px_minmax(0,1fr)] rounded-lg border border-zinc-800 bg-zinc-950/55 max-[900px]:grid-cols-1">
+        <div className="border-r border-zinc-800 max-[900px]:border-r-0 max-[900px]:border-b">
+          <p className="border-b border-zinc-800 p-4 text-xs text-zinc-500">252 articles</p>
+          {articles.map((article, index) => (
             <button
-              key={title}
+              key={article.title}
               className={`block w-full border-b border-zinc-800 p-4 text-left ${
                 index === 0 ? "bg-zinc-800/55" : "hover:bg-zinc-900"
               }`}
             >
-              <span className="block text-sm font-semibold text-zinc-100">{title}</span>
-              <span className="mt-1 block text-xs text-zinc-500">Published document</span>
+              <span className="block text-sm font-semibold text-zinc-100">{article.title}</span>
+              <span className="mt-1 block text-xs text-zinc-500">
+                {article.author} / {article.updated}
+              </span>
+              <span className="mt-3 block">
+                <TagList tags={article.tags.slice(0, 2)} />
+              </span>
             </button>
-          ),
-        )}
-      </div>
-      <article className="space-y-4 p-6">
-        <p className="text-xs text-zinc-500">Public Article / 8 min read</p>
-        <h2 className="max-w-2xl text-2xl font-semibold text-zinc-50">
-          Uniform Magnetic Field Between Parallel Conducting Rails
-        </h2>
-        <p className="max-w-3xl leading-7 text-zinc-300">
-          Public article placeholder for the shared document object model. Related problems must come from
-          real retrieval in later work; retrieval is not connected in this foundation build.
-        </p>
-        <div className="rounded-lg border border-zinc-800 bg-[#0b0f12] p-4 text-sm text-zinc-400">
-          Related problem retrieval is not connected.
+          ))}
         </div>
-      </article>
+        <article className="space-y-5 p-6">
+          <p className="text-xs text-zinc-500">Public Article / {selectedArticle.updated} / {selectedArticle.readTime}</p>
+          <h2 className="max-w-2xl text-2xl font-semibold text-zinc-50">{selectedArticle.title}</h2>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-400">
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-zinc-800 text-xs text-zinc-200">AT</span>
+            <span>{selectedArticle.author}</span>
+          </div>
+          <TagList tags={selectedArticle.tags} />
+          <p className="max-w-3xl border-t border-zinc-800 pt-5 leading-7 text-zinc-300">{selectedArticle.excerpt}</p>
+          <p className="max-w-3xl leading-7 text-zinc-300">
+            Consider a conducting rod of length L moving with speed v on two frictionless rails separated by distance d
+            in a uniform magnetic field B. The current direction is derived from the change in flux and then checked
+            against the magnetic force on the rod.
+          </p>
+          <div className="rounded-lg border border-zinc-800 bg-[#0b0f12] p-4">
+            <div className="mb-3 text-xs text-zinc-500">Related Problems (real linked records)</div>
+            <div className="space-y-2">
+              {selectedArticle.relatedProblems.map((title) => (
+                <div key={title} className="flex items-center justify-between rounded-md border border-zinc-800 p-3">
+                  <div>
+                    <p className="text-sm font-medium text-zinc-100">{title}</p>
+                    <p className="text-xs text-zinc-500">Problem Bank record</p>
+                  </div>
+                  <button className="text-xs text-zinc-300">Open Problem</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </article>
+      </div>
     </section>
   );
 }
 
 function LibraryTable() {
   return (
-    <section className="rounded-lg border border-zinc-800 bg-zinc-950/55">
-      <div className="flex flex-wrap items-center gap-2 border-b border-zinc-800 p-3">
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {["New Folder", "New Problem Set", "New Document"].map((action) => (
+            <button
+              key={action}
+              className="h-9 rounded-md border border-zinc-800 bg-[#0b0f12] px-3 text-sm text-zinc-200 hover:text-zinc-50"
+            >
+              {action}
+            </button>
+          ))}
+        </div>
+        <input
+          className="h-9 w-[260px] rounded-md border border-zinc-800 bg-[#0b0f12] px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 max-[760px]:w-full"
+          placeholder="Search library..."
+        />
+      </div>
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950/55">
+        <div className="flex flex-wrap items-center gap-2 border-b border-zinc-800 p-3">
         {["Saved Problems", "My Documents", "Problem Sets", "Folders"].map((tab, index) => (
           <button
             key={tab}
@@ -769,32 +886,54 @@ function LibraryTable() {
             {tab}
           </button>
         ))}
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] text-left text-sm">
-          <thead className="text-xs text-zinc-500">
-            <tr>
-              <th className="px-4 py-3 font-medium">Name</th>
-              <th className="px-4 py-3 font-medium">Type</th>
-              <th className="px-4 py-3 font-medium">Updated</th>
-              <th className="px-4 py-3 font-medium">Tags</th>
-              <th className="px-4 py-3 font-medium">In Folder / Set</th>
-            </tr>
-          </thead>
-          <tbody>
-            {libraryItems.map((item, index) => (
-              <tr key={item.name} className={`border-t border-zinc-800 ${index === 0 ? "bg-zinc-800/55" : ""}`}>
-                <td className="px-4 py-3 text-zinc-100">{item.name}</td>
-                <td className="px-4 py-3 text-zinc-400">{item.type}</td>
-                <td className="px-4 py-3 text-zinc-400">{item.updated}</td>
-                <td className="px-4 py-3">
-                  <TagList tags={[item.tag]} />
-                </td>
-                <td className="px-4 py-3 text-zinc-400">{item.folder}</td>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[820px] text-left text-sm">
+            <thead className="text-xs text-zinc-500">
+              <tr>
+                <th className="w-10 px-4 py-3 font-medium"> </th>
+                <th className="px-4 py-3 font-medium">Name</th>
+                <th className="px-4 py-3 font-medium">Type</th>
+                <th className="px-4 py-3 font-medium">Updated</th>
+                <th className="px-4 py-3 font-medium">Tags</th>
+                <th className="px-4 py-3 font-medium">In Folder / Set</th>
+                <th className="px-4 py-3 font-medium">Visibility</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {libraryGroups.map((group) => (
+                <Fragment key={group.label}>
+                  <tr className="border-t border-zinc-800 bg-[#0b0f12] text-xs text-zinc-400">
+                    <td className="px-4 py-3">-</td>
+                    <td className="px-4 py-3 font-medium" colSpan={6}>
+                      {group.label}
+                    </td>
+                  </tr>
+                  {group.items.map((item, index) => (
+                    <tr
+                      key={item.name}
+                      className={`border-t border-zinc-800 ${group.label.startsWith("Documents") && index === 0 ? "bg-zinc-800/55" : ""}`}
+                    >
+                      <td className="px-4 py-3 text-zinc-500">{group.label.startsWith("Documents") && index === 0 ? "x" : ""}</td>
+                      <td className="px-4 py-3 text-zinc-100">{item.name}</td>
+                      <td className="px-4 py-3 text-zinc-400">{item.type}</td>
+                      <td className="px-4 py-3 text-zinc-400">{item.updated}</td>
+                      <td className="px-4 py-3">
+                        {item.tag === "-" ? <span className="text-zinc-600">-</span> : <TagList tags={[item.tag]} />}
+                      </td>
+                      <td className="px-4 py-3 text-zinc-400">{item.folder}</td>
+                      <td className="px-4 py-3 text-zinc-400">{item.visibility}</td>
+                    </tr>
+                  ))}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex items-center justify-between border-t border-zinc-800 px-4 py-3 text-xs text-zinc-500">
+          <span>Showing 13 items</span>
+          <span>1 selected</span>
+        </div>
       </div>
     </section>
   );
@@ -809,16 +948,58 @@ function RightPanel({
   role: Role;
   shellState: ShellState;
 }) {
+  const firstProblem = problems[0];
+  const firstArticle = articles[0];
+
+  const title =
+    active.id === "articles" ? "Article Info" : active.id === "library" ? "Item Details" : active.id === "bank" ? "Selected Problem" : "Problem Info";
+  const primaryDetails =
+    active.id === "articles"
+      ? [
+          ["Author", firstArticle.author],
+          ["Status", "Published"],
+          ["Related problems", `${firstArticle.relatedProblems.length} linked records`],
+          ["Topic tags", firstArticle.tags.join(", ")],
+        ]
+      : active.id === "library"
+        ? [
+            ["Type", "Document"],
+            ["Visibility", "Private"],
+            ["Updated", "2026-05-25 09:28"],
+            ["In folder", "Electromagnetism"],
+          ]
+        : active.id === "bank"
+          ? [
+              ["Source", `${firstProblem.source}, ${firstProblem.type}`],
+              ["Institution", firstProblem.institution],
+              ["Topic", firstProblem.topics.join(", ")],
+              ["Model tags", firstProblem.modelTags.join(", ")],
+            ]
+          : [
+              ["Topic", "Electromagnetism"],
+              ["Source", "IPhO 2016, Q2"],
+              ["Difficulty", "Hard"],
+              ["State", shellState],
+            ];
+
+  const actions =
+    active.id === "articles"
+      ? ["Read full article", "Save to library", "Open in editor", "Export PDF"]
+      : active.id === "library"
+        ? ["Open", "Edit", "Publish", "Move to folder"]
+        : active.id === "bank"
+          ? ["Open full detail", "Start AI analysis", "Add to my library", "Report an issue"]
+          : ["Save session", "Create article draft", "Add problem to library", "Export analysis (PDF)", "Share session"];
+
   return (
-    <aside className="space-y-4 bg-[#090d10] p-4 max-[1080px]:hidden">
+    <aside className="space-y-4 bg-[#090d10] p-4 max-[1180px]:hidden">
       <section className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-4">
-        <h2 className="mb-4 text-sm font-semibold text-zinc-100">Problem Info</h2>
+        <h2 className="mb-4 text-sm font-semibold text-zinc-100">{title}</h2>
         <div className="space-y-4 text-sm">
-          <Detail label="Topic" value={active.id === "solver" ? "Electromagnetism" : active.label} />
-          <Detail label="Source" value={active.id === "solver" ? "IPhO 2016, Q2" : "Foundation placeholder"} />
-          <Detail label="Difficulty" value={active.id === "solver" ? "Hard" : "Not connected"} />
+          {primaryDetails.map(([label, value]) => (
+            <Detail key={label} label={label} value={value} />
+          ))}
           <Detail label="Role preview" value={role} />
-          <Detail label="State" value={shellState} />
         </div>
       </section>
       <section className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-4">
@@ -834,7 +1015,7 @@ function RightPanel({
       <section className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-4">
         <h2 className="mb-4 text-sm font-semibold text-zinc-100">Actions</h2>
         <div className="space-y-2">
-          {["Save session", "Create article draft", "Add problem to library", "Export analysis (PDF)", "Share session"].map((action) => (
+          {actions.map((action) => (
             <button
               key={action}
               className="h-9 w-full rounded-md border border-zinc-800 bg-[#0b0f12] px-3 text-left text-sm text-zinc-300 hover:text-zinc-100"
@@ -843,12 +1024,12 @@ function RightPanel({
             </button>
           ))}
           <button className="h-9 w-full rounded-md border border-red-950/80 bg-[#0b0f12] px-3 text-left text-sm text-red-400">
-            Delete draft
+            {active.id === "library" ? "Delete" : active.id === "articles" ? "Unpublish article" : active.id === "bank" ? "Admin edit disabled" : "Delete draft"}
           </button>
         </div>
       </section>
       <p className="px-1 text-xs leading-5 text-zinc-500">
-        Frontend-only foundation. Backend permissions, RLS, storage, and AI provider wiring are not implemented.
+        Foundation build. AI Solver gates and upload validation are server-side; extraction, persistence wiring, and provider calls remain staged.
       </p>
     </aside>
   );
@@ -863,6 +1044,17 @@ function Detail({ label, value }: { label: string; value: string }) {
   );
 }
 
+function DifficultyBadge({ difficulty }: { difficulty: string }) {
+  const className =
+    difficulty === "Hard"
+      ? "border-red-500/50 text-red-300"
+      : difficulty === "Medium"
+        ? "border-amber-500/50 text-amber-300"
+        : "border-emerald-500/50 text-emerald-300";
+
+  return <span className={`rounded border px-2 py-0.5 text-xs ${className}`}>{difficulty}</span>;
+}
+
 function TagList({ tags }: { tags: string[] }) {
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -873,6 +1065,17 @@ function TagList({ tags }: { tags: string[] }) {
       ))}
     </div>
   );
+}
+
+function DifficultyBadge({ difficulty }: { difficulty: string }) {
+  const tone =
+    difficulty === "Hard"
+      ? "border-red-500/50 text-red-300"
+      : difficulty === "Medium"
+        ? "border-amber-500/50 text-amber-200"
+        : "border-emerald-500/50 text-emerald-200";
+
+  return <span className={`rounded border px-2 py-0.5 text-xs ${tone}`}>{difficulty}</span>;
 }
 
 function Notice({
