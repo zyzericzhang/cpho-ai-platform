@@ -13,6 +13,7 @@ labels: frontend, needs-design-reference
 - Canonical Figma file: https://www.figma.com/design/CjqygT7bVO6wEZOKjLOyyJ/cpho-ai-platform?node-id=0-1&t=x0oQGJwauCyLvW9W-1
 - Figma frame:
 - Screenshot path:
+- Vercel preview URL:
 
 ## Target User
 
@@ -40,8 +41,8 @@ labels: frontend, needs-design-reference
 - [ ] Uses dark Apple/Linear/ChatGPT-like style.
 - [ ] Uses table/right-panel/collapsible patterns where appropriate.
 - [ ] Includes implementation screenshot or preview URL.
+- [ ] Includes Vercel preview URL when deployment is configured.
 - [ ] Documents visual differences.
 - [ ] Build/lint passes.
 
 ## Risks
-

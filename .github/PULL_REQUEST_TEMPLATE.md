@@ -16,7 +16,8 @@
 Required when UI changes.
 
 - Reference Figma frame or screenshot:
-- Implementation screenshot or preview URL:
+- Implementation screenshot:
+- Vercel preview URL:
 - Visual differences:
 
 ## Backend / Permission Evidence
@@ -51,7 +52,7 @@ Required when AI Solver or provider behavior changes.
 
 - [ ] No direct commit to `main`
 - [ ] Build/lint/tests run or explicitly explained
-- [ ] Frontend screenshot/preview included for UI changes
+- [ ] Frontend screenshot and Vercel preview included for UI changes when available
 - [ ] Backend permission review included for backend changes
 - [ ] No secrets committed
 - [ ] Manual verification steps are reproducible

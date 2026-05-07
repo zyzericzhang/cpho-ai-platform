@@ -1,12 +1,12 @@
 # Frontend Style Guide
 
-Frontend work must be Figma-first and screenshot-backed. The canonical design file is:
+Frontend work must be Figma-first, Build-web-app-assisted, and Vercel-preview-backed. The canonical design file is:
 
 ```text
 https://www.figma.com/design/CjqygT7bVO6wEZOKjLOyyJ/cpho-ai-platform?node-id=0-1&t=x0oQGJwauCyLvW9W-1
 ```
 
-The current Figma canvas is `Round 1 - CPHO Core Screens`. The 5 screenshots in `design/` are local fallback references when Figma is unavailable or when a PR needs static evidence.
+The current Figma canvas is `Round 1 - CPHO Core Screens`. The 5 screenshots in `design/` are local fallback references when Figma is unavailable or when a PR needs static evidence. Vercel preview URLs are the preferred shareable implementation reference once the app exists.
 
 ## Visual Standard
 
@@ -68,7 +68,7 @@ Local fallback screenshots：
 
 Future stable references should be copied or exported to `docs/design/screenshots/`.
 
-## Figma-first Workflow
+## Figma + Build Web App + Vercel Workflow
 
 Every frontend issue should reference the canonical Figma file and the target frame node. If Figma is unavailable, it must reference one local screenshot under `design/` or `docs/design/screenshots/`.
 
@@ -78,15 +78,21 @@ Before implementation：
 - Translate Figma into project components rather than copying generated code blindly.
 - Preserve CPHO product rules even when a visual frame is incomplete.
 
+During implementation：
+
+- Use Build web app/Codex to iterate the actual Next.js UI in the repo.
+- Keep generated UI changes inside the project stack：Next.js, React, TypeScript, Tailwind CSS, and local component primitives.
+- Do not let Build web app introduce public registration, generic chatbot behavior, fake retrieval data, or client-side AI secrets.
+
 After implementation：
 
 - Include the reference Figma frame or fallback screenshot.
-- implementation screenshot or preview URL
+- Include an implementation screenshot and, when available, a Vercel preview URL.
 - visual differences
 - changed files
 - build/lint result
 
-Codex should use Figma plugin/skill when explicitly asked to inspect, create, edit, or compare Figma frames. Frontend PRs should use `figma-design-review` when visual fidelity is part of acceptance.
+Codex should use Figma plugin/skill when explicitly asked to inspect, create, edit, or compare Figma frames. Frontend PRs should use `figma-design-review` when visual fidelity is part of acceptance. Vercel preview is evidence for review, not a replacement for local lint/build or product/security checks.
 
 ## Component Rules
 
