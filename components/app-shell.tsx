@@ -1067,17 +1067,6 @@ function TagList({ tags }: { tags: string[] }) {
   );
 }
 
-function DifficultyBadge({ difficulty }: { difficulty: string }) {
-  const tone =
-    difficulty === "Hard"
-      ? "border-red-500/50 text-red-300"
-      : difficulty === "Medium"
-        ? "border-amber-500/50 text-amber-200"
-        : "border-emerald-500/50 text-emerald-200";
-
-  return <span className={`rounded border px-2 py-0.5 text-xs ${tone}`}>{difficulty}</span>;
-}
-
 function Notice({
   title,
   body,
