@@ -12,7 +12,24 @@ export type UploadedMaterial = {
   mimeType: string;
   sizeBytes: number;
   storagePath: string;
+  imageContext?: AiSolverImageContextMetadata;
   createdAt: string;
+};
+
+export type AiSolverImageContextMetadata = {
+  uploadId: string;
+  sessionId: string;
+  userId: string;
+  role: MaterialRole;
+  mimeType: string;
+  fileName: string;
+  sizeBytes: number;
+  storagePath: string;
+  createdAt: string;
+};
+
+export type AiSolverProviderImageContext = AiSolverImageContextMetadata & {
+  dataUrl: string;
 };
 
 export type AiSolverSession = {
@@ -54,7 +71,11 @@ export type AiSolverSectionKey =
   | "write_article"
   | "add_to_personal_library";
 
+export type AiSolverAnalysisSectionKey = AiSolverSectionKey;
+
 export type RetrievalConnectionStatus = "connected" | "not_connected";
+
+export type AiSolverRetrievalStatus = RetrievalConnectionStatus | "error";
 
 export type SimilarProblemRecord = {
   id: string;
@@ -100,17 +121,28 @@ export type AiSolverAnalysisSections = {
 };
 
 export type AiSolverAnalysisResult = {
+  sessionId?: string;
+  userId?: string;
   sections: AiSolverAnalysisSections;
   retrieval_status: {
-    similar_problems: RetrievalConnectionStatus;
-    related_articles: RetrievalConnectionStatus;
+    similar_problems: AiSolverRetrievalStatus;
+    related_articles: AiSolverRetrievalStatus;
   };
   warnings: string[];
-  provider: {
+  provider?: {
     ran: boolean;
     model: string;
     offlineFallback: boolean;
   };
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type StoredAiSolverAnalysisResult = AiSolverAnalysisResult & {
+  sessionId: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type AiSolverImageContext = {
@@ -125,4 +157,38 @@ export type AiSolverAnalysisInput = {
   standardAnswer: string;
   images?: AiSolverImageContext[];
   retrieval?: AiSolverRetrievalContext;
+};
+
+export type AiSolverFollowUpKind = "user" | "assistant";
+
+export type AiSolverSelectedTextContext = {
+  sectionKey?: AiSolverAnalysisSectionKey;
+  text: string;
+  startOffset: number;
+  endOffset: number;
+};
+
+export type AiSolverMessageContext =
+  | { type: "whole_analysis" }
+  | { type: "section"; sectionKey: AiSolverAnalysisSectionKey }
+  | { type: "selected_text"; selection: AiSolverSelectedTextContext }
+  | { type: "follow_up"; parentMessageId: string };
+
+export type AiSolverMessage = {
+  id: string;
+  sessionId: string;
+  userId: string;
+  parentMessageId: string | null;
+  kind: AiSolverFollowUpKind;
+  content: string;
+  context: AiSolverMessageContext;
+  createdAt: string;
+};
+
+export type AiSolverCreateMessageInput = {
+  sessionId: string;
+  parentMessageId?: string | null;
+  kind: AiSolverFollowUpKind;
+  content: string;
+  context: AiSolverMessageContext;
 };
