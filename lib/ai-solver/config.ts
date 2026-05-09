@@ -5,6 +5,7 @@ export const DEFAULT_OPENROUTER_MODEL = "google/gemini-3-pro-preview";
 
 export const AI_SOLVER_PROVIDER_LIMITS = {
   maxAnalysisSubtasks: 4,
+  maxFollowUpTokens: 1400,
   requestTimeoutMs: 60_000,
 };
 
