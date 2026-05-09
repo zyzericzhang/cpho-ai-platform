@@ -639,7 +639,7 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
           sessionId: nextSessionId,
           parentMessageId: context.type === "follow_up" ? context.parentMessageId : undefined,
           context,
-          question: nextQuestion,
+          prompt: nextQuestion,
         }),
       });
       const payload = await response.json().catch(() => ({}));
@@ -651,7 +651,7 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
       const nextMessages = normalizeFollowUpMessages(
         payload.messages ?? [payload.userMessage, payload.assistantMessage].filter(Boolean),
       );
-      setMessages(nextMessages);
+      setMessages((current) => mergeFollowUpMessages(current, nextMessages));
       setQuestion("");
       setSelectionDraft(null);
       setSelectedContext({ type: "whole_analysis" });
@@ -1128,6 +1128,13 @@ function EmptyRetrievalNotice({ label, status }: { label: string; status?: strin
 }
 
 function normalizeFollowUpMessages(input: unknown): FollowUpMessage[] {
+  if (isRecord(input)) {
+    const pair = [input.user, input.assistant, input.userMessage, input.assistantMessage].filter(Boolean);
+    if (pair.length > 0) {
+      return normalizeFollowUpMessages(pair);
+    }
+  }
+
   if (!Array.isArray(input)) {
     return [];
   }
@@ -1142,12 +1149,21 @@ function normalizeFollowUpMessages(input: unknown): FollowUpMessage[] {
           : typeof message.parent_message_id === "string"
             ? message.parent_message_id
             : null,
-      role: (message.role === "assistant" ? "assistant" : "user") as FollowUpMessage["role"],
+      role: (message.role === "assistant" || message.kind === "assistant" ? "assistant" : "user") as FollowUpMessage["role"],
       content: String(message.content ?? message.answer ?? message.question ?? ""),
       context: isFollowUpContext(message.context) ? message.context : undefined,
       createdAt: typeof message.createdAt === "string" ? message.createdAt : undefined,
     }))
     .filter((message) => message.content.trim().length > 0);
+}
+
+function mergeFollowUpMessages(current: FollowUpMessage[], next: FollowUpMessage[]) {
+  const byId = new Map(current.map((message) => [message.id, message]));
+  for (const message of next) {
+    byId.set(message.id, message);
+  }
+
+  return Array.from(byId.values());
 }
 
 function buildAnalysisStatus(analysis: AnalysisPayload) {
