@@ -29,3 +29,27 @@
 - `npm run lint` & `npm run build`.
 
 ## Status: Starting implementation...
+
+---
+
+# Issue #10 AI Solver OpenRouter Gemini multimodal orchestration
+
+**Target Branch**: `feature/openrouter-gemini-multimodal`
+**Integrated Commit**: `70eb116c`
+
+| ID | Task | Branch | Status | Owner | Notes |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| ASOLV-10A | Provider orchestration core | `feat/ai-solver-provider-orchestration` | Done | worker-provider | Commit `84295fd2`; server-only OpenRouter orchestration, decomposition, multimodal message construction, safe provider errors. |
+| ASOLV-10B | Session, image context, and threaded message store | `feat/ai-solver-threaded-store` | Done | worker-store | Commit `7c39cb72`; owner-scoped image context, analysis persistence, threaded message helpers. |
+| ASOLV-10C | Analyze and follow-up API routes | `feat/ai-solver-api-routes` | Done | worker-api | Commit `b0c826fb`; analyze/follow-up routes, persisted results, normalized errors, retrieval boundaries. |
+| ASOLV-10D | AI Solver UI result, selection Q&A, and thread panel | `feat/ai-solver-threaded-ui` | Done | worker-ui | Commit `651f948f`; compact threaded AI Solver UI using local `design/` image style reference only, no Figma lookup. |
+| ASOLV-10E | Integration and verification | `feat/ai-solver-verification` | Done | coordinator | Commits `165f3228`, `70eb116c`; API/UI contract fix and provider-internal fallback wording cleanup. |
+
+## Verification Notes
+
+- `npx tsc --noEmit`: passed in `.worktrees/ai-solver-verification`.
+- `npm run lint`: passed in `.worktrees/ai-solver-verification`.
+- `git diff --check`: passed in `.worktrees/ai-solver-verification`.
+- `npm run build`: blocked by existing Next 16 Turbopack worktree root inference issue.
+- `npx next build --webpack`: passed in `.worktrees/ai-solver-verification`.
+- Backend/security review: no OpenRouter key/client exposure found; image data URLs remain server/local-store only; owner-scoped local-store helpers gate sessions/uploads/messages; remaining medium risk is lack of rate/usage limiting for multi-call provider flows.
