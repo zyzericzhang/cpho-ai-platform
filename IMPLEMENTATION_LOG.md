@@ -52,5 +52,5 @@
 - `git diff --check`: passed in `.worktrees/ai-solver-verification`.
 - `npm run build`: blocked by existing Next 16 Turbopack worktree root inference issue.
 - `npx next build --webpack`: passed in `.worktrees/ai-solver-verification`.
-- OpenRouter model availability check on 2026-05-09: `https://openrouter.ai/api/v1/models` did not list `google/gemini-3-pro-preview`; it did list `google/gemini-3.1-pro-preview`. The implementation did not switch models because product-owner approval is required.
+- OpenRouter model availability check on 2026-05-09: `https://openrouter.ai/api/v1/models` did not list `google/gemini-3-pro-preview`; it did list `google/gemini-3.1-pro-preview`. Product owner approved `google/gemini-3.1-pro-preview`, and the server default now uses that model id.
 - Backend/security review: no OpenRouter key/client exposure found; image data URLs remain server/local-store only; owner-scoped local-store helpers gate sessions/uploads/messages; remaining medium risk is lack of rate/usage limiting for multi-call provider flows.

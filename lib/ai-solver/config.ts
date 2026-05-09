@@ -1,7 +1,7 @@
 export const AI_SOLVER_UPLOAD_BUCKET = "ai-solver-uploads";
 
 export const DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
-export const DEFAULT_OPENROUTER_MODEL = "google/gemini-3-pro-preview";
+export const DEFAULT_OPENROUTER_MODEL = "google/gemini-3.1-pro-preview";
 
 export const AI_SOLVER_PROVIDER_LIMITS = {
   maxAnalysisSubtasks: 4,
