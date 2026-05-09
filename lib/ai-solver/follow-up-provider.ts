@@ -39,7 +39,7 @@ export async function runAiSolverFollowUp(input: RunFollowUpInput): Promise<Foll
   if (!client.configured) {
     return {
       answer:
-        "Offline fallback: provider was not called because OPENROUTER_API_KEY is not configured. The follow-up question was saved in the AI Solver thread, but a generated answer requires the server-side provider key.",
+        "Offline fallback: provider was not called because server-side AI configuration is incomplete. The follow-up question was saved in the AI Solver thread, but a generated answer requires provider configuration.",
       provider: {
         ran: false,
         model: client.modelId,

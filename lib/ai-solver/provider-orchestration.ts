@@ -221,7 +221,7 @@ function buildOfflineFallback(input: AiSolverAnalysisInput, model: string, warni
     {
       sections: {
         step_by_step_derivation:
-          "Offline fallback: provider was not called because OPENROUTER_API_KEY is not configured.",
+          "Offline fallback: provider was not called because server-side AI configuration is incomplete.",
         physical_reasoning_reconstruction:
           "Offline fallback: configure the server-side provider key to generate physical reasoning reconstruction.",
         key_handling: "Offline fallback: configure the server-side provider key to generate key handling guidance.",
@@ -242,7 +242,7 @@ function buildOfflineFallback(input: AiSolverAnalysisInput, model: string, warni
       retrieval: input.retrieval,
       warnings: [
         ...warnings,
-        "OPENROUTER_API_KEY is absent; returned explicit offline fallback and provider.ran=false.",
+        "Server-side AI configuration is incomplete; returned explicit offline fallback and provider.ran=false.",
       ],
     },
   );
