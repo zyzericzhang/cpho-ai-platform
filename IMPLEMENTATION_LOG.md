@@ -14,13 +14,17 @@ This file tracks the progress of the CPHO AI platform development. It serves as 
 ## History
 - 2026-05-09: Initial setup of the Agentic Harness branch and documentation.
 
-## Current Epic: Issue #11 Shared Shell Contract
-**Target Branch**: `codex/issue-11-shell-contract`
-**Goal**: Localize shared shell navigation/state data and remove seeded demo records from the shell data contract.
+## Current Epic: Issue #11 中文化真实页面内容与导览逻辑
+**Target Branch**: `codex/issue-11-integration-verify`
+**GitHub Issue**: https://github.com/zyzericzhang/cpho-ai-platform/issues/11
+**Goal**: Convert app shell and core modules from English mock/demo UI to usable Chinese real-state pages, remove seeded fake records, and preserve navigation, empty/error/permission, selected item, and AI Solver standard-answer gates.
 
 | ID | Task | Branch | Status | Owner | Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| SHELL-11A | Chinese shell data contract | `codex/issue-11-shell-contract` | ✅ Done | worker-shell | Localized module/sidebar/action/state/analysis labels; replaced seeded problem/article/library records with typed empty arrays and explicit empty-state metadata. |
+| UI11-A | Shared shell contract and Chinese navigation/state data | `codex/issue-11-shell-contract` | ✅ Done | worker-shell / Planck | Commit `9a072812`; localized module/sidebar/action/state/analysis labels; replaced seeded problem/article/library records with typed empty arrays and explicit empty-state metadata. |
+| UI11-B | AI Solver Chinese real-session flow | `codex/issue-11-ai-solver-cn` | ✅ Done | worker-solver / Popper | Commit `c66a1180`; Chinese AI Solver UI, no fake seeded problem/material content, upload cards only after actual upload response, retrieval sections say `真实检索未接入`. |
+| UI11-C | Problem Bank, Article Plaza, Library real empty-state views | `codex/issue-11-real-state-modules` | ✅ Done | worker-modules / Ptolemy | Commit `da1bef14`; non-Solver modules guard empty lists, no fake default rows/readers/selections, student admin actions disabled with Chinese reason. |
+| UI11-D | Integration, browser verification, and risk audit | `codex/issue-11-integration-verify` | 🚧 In Progress | coordinator | Integrated worker branches; `npm run lint` and `npx tsc --noEmit` pass; `npm run build` blocked by known Next 16 Turbopack worktree root inference, `npx next build --webpack` passes. |
 
 ## Current Epic: Issue #10 AI Solver OpenRouter Gemini multimodal orchestration
 **Target Branch**: `feature/openrouter-gemini-multimodal`

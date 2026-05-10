@@ -1440,10 +1440,10 @@ function getModuleCopy(active: ModuleConfig) {
 function getSidebarLabel(moduleId: ModuleId, label: string) {
   const labels: Partial<Record<ModuleId, Record<string, string>>> = {
     solver: {
-      "New Analysis": "New Analysis",
-      Sessions: "Sessions",
-      "Uploaded Materials": "Uploaded Materials",
-      Feedback: "Feedback",
+      "New Analysis": "新建解析",
+      Sessions: "解析会话",
+      "Uploaded Materials": "上传材料",
+      Feedback: "解析反馈",
     },
     bank: {
       "Browse Problems": "浏览题目",
