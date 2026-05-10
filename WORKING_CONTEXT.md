@@ -1,28 +1,29 @@
 ---
-last_updated: "2026-05-10T17:35:00+08:00"
-current_phase: "Execution"
-active_branch: "feature/collaborative-architecture-refinement"
+last_updated: "2026-05-10T18:05:00+08:00"
+current_phase: "Idle"
+active_branch: "dev"
 ---
 # WORKING_CONTEXT.md | 当前会话上下文
 
 这个文件记录了当前正在进行的任务、短时记忆和会话特定状态，帮助 Agent 在多回合对话中保持连贯。
 
 ## 🎯 当前焦点 (Current Focus)
-- **任务**: 引入 ECC 启发的高阶架构，建立分层指令系统。
-- **分支**: `feature/collaborative-architecture-refinement`
-- **阶段**: 执行阶段 - 正在创建核心架构文档。
+- **任务**: 无活跃任务。仓库已整理完毕。
+- **分支**: `dev`（与 `origin/dev` 同步）
+- **阶段**: 空闲 — 等待下一个任务指派。
 
 ## 🧠 短时记忆 (Session Memory)
-- 用户要求下载 `everything-claude-code` 并整合。由于无法直接 zip 下载，我正在将其核心思想（SOUL, STATUS, CONTEXT, ADR）手动适配并实现在本分支中。
-- 用户强调：**全中文、无 Figma、成效导向、可实时干预**。
+- 已将所有未提交的 Problem Bank 代码、AI Solver 占位页面、数据库迁移、Agent 配置等合入 `dev` 并推送至 GitHub。
+- 已清理所有过期的 feature/codex 分支（本地 16 个 + 远程 2 个）、5 个 worktree、3 个 stash。
+- 当前仓库干净：仅保留 `dev` 和 `main` 两个分支。
+- `.env.local` 中 `NEXT_PUBLIC_SUPABASE_URL` 和 `NEXT_PUBLIC_SUPABASE_ANON_KEY` 为空，需要用户手动填写。
+- 数据库迁移尚未执行，需要用户在 Supabase Dashboard 或通过 CLI 手动执行。
 
 ## 🛠️ 下一步操作 (Next Steps)
-1. [x] 创建 `SOUL.md`
-2. [x] 创建 `PROJECT_STATUS.md`
-3. [x] 创建 `ARCHITECTURE.md` (全中文说明文件)
-4. [x] 建立 `docs/decisions/` 目录并撰写第一个 ADR。
-5. [x] 更新子目录 `lib/GEMINI.md` 和 `app/GEMINI.md`。
-6. [ ] 根据 `PROJECT_STATUS.md` 解决待办项（如真实题目检索或安全校验）。
+1. [ ] 用户填写 `.env.local` 中的 Supabase 凭证。
+2. [ ] 用户在 Supabase 中执行两个迁移 SQL。
+3. [ ] 用户运行 `npm run dev` 进行功能测试。
+4. [ ] 验证通过后，将 `dev` 合入 `main`。
 
 ## 🛑 阻塞项 (Blockers)
-- 无。
+- `.env.local` 缺少 Supabase 凭证（URL + Anon Key）。
