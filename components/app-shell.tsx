@@ -51,14 +51,39 @@ type AnalysisPayload = {
 };
 
 const fixedAnalysisSections: Array<{ key: AnalysisSectionKey; label: string }> = [
-  { key: "step_by_step_derivation", label: "Step-by-step derivation" },
-  { key: "physical_reasoning_reconstruction", label: "Physical reasoning reconstruction" },
-  { key: "related_models_similar_problems", label: "Related models / similar problems" },
-  { key: "related_articles", label: "Related articles" },
-  { key: "key_handling", label: "Key handling" },
-  { key: "write_article", label: "Write article" },
-  { key: "add_to_personal_library", label: "Add to personal library" },
+  { key: "step_by_step_derivation", label: "逐步推导" },
+  { key: "physical_reasoning_reconstruction", label: "物理图景重建" },
+  { key: "related_models_similar_problems", label: "相关模型与相似题" },
+  { key: "related_articles", label: "相关文章" },
+  { key: "key_handling", label: "关键处理" },
+  { key: "write_article", label: "写作文章" },
+  { key: "add_to_personal_library", label: "加入个人资料库" },
 ];
+
+const materialRoleLabels: Record<string, string> = {
+  combined: "题目与标准答案",
+  problem: "题目",
+  answer: "标准答案",
+};
+
+function getModuleLabel(moduleItem: ModuleConfig) {
+  return moduleItem.id === "solver" ? "AI 解题" : moduleItem.label;
+}
+
+function getSidebarItemLabel(moduleId: ModuleId, label: string) {
+  if (moduleId !== "solver") {
+    return label;
+  }
+
+  const labels: Record<string, string> = {
+    "New Analysis": "新建解析",
+    Sessions: "历史会话",
+    "Uploaded Materials": "上传材料",
+    Feedback: "反馈",
+  };
+
+  return labels[label] ?? label;
+}
 
 export function AppShell() {
   const [activeModule, setActiveModule] = useState<ModuleId>("solver");
@@ -185,7 +210,7 @@ function TopBar({
               activeModule === moduleItem.id ? "text-zinc-50" : "hover:text-zinc-200"
             }`}
           >
-            {moduleItem.label}
+            {getModuleLabel(moduleItem)}
             {activeModule === moduleItem.id ? (
               <span className="absolute inset-x-0 bottom-0 h-px bg-zinc-100" />
             ) : null}
@@ -223,16 +248,17 @@ function Sidebar({ active, role }: { active: ModuleConfig; role: Role }) {
             <div className="flex items-center justify-between text-sm font-semibold text-zinc-100">
               <span className="flex items-center gap-2">
                 <span className="grid h-5 w-5 place-items-center rounded border border-zinc-700 text-[10px] text-zinc-400">
-                  {moduleItem.label.slice(0, 1)}
+                  {getModuleLabel(moduleItem).slice(0, 1)}
                 </span>
-                {moduleItem.label}
+                {getModuleLabel(moduleItem)}
               </span>
-              <span className="text-xs text-zinc-500">Collapse</span>
+              <span className="text-xs text-zinc-500">{moduleItem.id === "solver" ? "收起" : "Collapse"}</span>
             </div>
             <div className="space-y-1">
               {moduleItem.sidebar.map((item) => {
                 const disabled = item.adminOnly && role !== "admin";
                 const selected = active.id === moduleItem.id && item.label === moduleItem.sidebar[0].label;
+                const itemLabel = getSidebarItemLabel(moduleItem.id, item.label);
                 return (
                   <button
                     key={item.label}
@@ -243,11 +269,11 @@ function Sidebar({ active, role }: { active: ModuleConfig; role: Role }) {
                         ? "bg-zinc-800/70 text-zinc-50"
                         : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
                     } ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
-                    title={disabled ? "Admin role required" : item.label}
+                    title={disabled ? "需要管理员角色" : itemLabel}
                   >
                     <span className="flex min-w-0 items-center gap-2">
                       <span className="h-1.5 w-1.5 rounded-full border border-zinc-600" />
-                      <span className="truncate">{item.label}</span>
+                      <span className="truncate">{itemLabel}</span>
                     </span>
                     {item.badge ? (
                       <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-xs text-zinc-300">
@@ -284,24 +310,31 @@ function ModuleHeader({
   onStateChange: (state: ShellState) => void;
   isAuthMode: boolean;
 }) {
+  const isSolver = active.id === "solver";
+  const heading = isSolver ? "AI 解题" : active.title;
+  const eyebrow = isSolver ? "AI 解题 / 新会话" : active.eyebrow;
+  const statusLabel = isSolver ? "等待上传材料" : "Ready for analysis";
+  const metaLabel = isSolver ? "新建会话后上传材料并确认标准答案" : "Created 2 minutes ago";
+  const updatedLabel = isSolver ? "没有标准答案不会生成解析" : "Updated just now";
+
   return (
     <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
       <div className="min-w-0">
-        <p className="mb-3 text-sm text-zinc-500">{active.eyebrow}</p>
+        <p className="mb-3 text-sm text-zinc-500">{eyebrow}</p>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-normal text-zinc-50">{active.title}</h1>
+          <h1 className="text-2xl font-semibold tracking-normal text-zinc-50">{heading}</h1>
           <span className="flex items-center gap-2 text-sm text-zinc-300">
             <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            Ready for analysis
+            {statusLabel}
           </span>
         </div>
         <p className="mt-2 max-w-2xl text-sm text-zinc-400">
-          Created 2 minutes ago <span className="mx-2 text-zinc-700">.</span> Updated just now
+          {metaLabel} <span className="mx-2 text-zinc-700">.</span> {updatedLabel}
         </p>
       </div>
       <div className="flex flex-col items-end gap-3 max-[760px]:items-start">
         <div className="flex flex-col items-end gap-1">
-          {isAuthMode && <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium">Profile Role</span>}
+          {isAuthMode && <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium">{isSolver ? "用户角色" : "Profile Role"}</span>}
           <div className="flex rounded-md border border-zinc-800 bg-zinc-950 p-1 text-xs">
             {(["student", "admin"] as Role[]).map((option) => (
               <button
@@ -313,11 +346,11 @@ function ModuleHeader({
                   role === option ? "bg-zinc-100 text-zinc-950" : "text-zinc-400 hover:text-zinc-100"
                 } ${isAuthMode ? "cursor-default" : ""}`}
               >
-                {option}
+                {isSolver ? getChineseRole(option) : option}
               </button>
             ))}
           </div>
-          {!isAuthMode && <span className="text-[10px] text-zinc-500 italic">Preview mode: selector enabled</span>}
+          {!isAuthMode && <span className="text-[10px] text-zinc-500 italic">{isSolver ? "预览模式：可切换角色" : "Preview mode: selector enabled"}</span>}
         </div>
         <div className="flex flex-wrap justify-end gap-1 text-xs max-[760px]:justify-start">
           {shellStates.map((state) => (
@@ -331,7 +364,7 @@ function ModuleHeader({
                   : "border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-zinc-100"
               }`}
             >
-              {state}
+              {isSolver ? getChineseShellState(state) : state}
             </button>
           ))}
         </div>
@@ -353,26 +386,36 @@ function StateSurface({
   onSelectedIndexChange: (index: number) => void;
   role: Role;
 }) {
+  const isSolver = active.id === "solver";
+
   if (shellState === "loading") {
-    return <Notice title="Loading workspace" body="Preparing the selected module shell and local placeholder state." />;
+    return isSolver
+      ? <Notice title="正在加载解题工作区" body="正在准备 AI Solver 会话状态。" />
+      : <Notice title="Loading workspace" body="Preparing the selected module shell and local placeholder state." />;
   }
 
   if (shellState === "empty") {
-    return <Notice title="No records yet" body="This module has no connected records in the local foundation build." />;
+    return isSolver
+      ? <Notice title="暂无解题材料" body="请上传真实题目材料；不会预置或展示假题目内容。" />
+      : <Notice title="No records yet" body="This module has no connected records in the local foundation build." />;
   }
 
   if (shellState === "error") {
-    return <Notice tone="danger" title="Preview error" body="The shell can display recoverable module errors without leaving the app frame." />;
+    return isSolver
+      ? <Notice tone="danger" title="解题会话出错" body="请检查上传材料、确认字段和标准答案状态后重试。" />
+      : <Notice tone="danger" title="Preview error" body="The shell can display recoverable module errors without leaving the app frame." />;
   }
 
   if (shellState === "permission") {
-    return (
-      <Notice
-        tone="warning"
-        title="Permission denied"
-        body="Admin-only actions are disabled in the student role. Server-side checks and RLS will enforce this in later backend work."
-      />
-    );
+    return isSolver
+      ? <Notice tone="warning" title="权限不足" body="当前角色不能执行该操作；最终权限仍由服务器端校验决定。" />
+      : (
+          <Notice
+            tone="warning"
+            title="Permission denied"
+            body="Admin-only actions are disabled in the student role. Server-side checks and RLS will enforce this in later backend work."
+          />
+        );
   }
 
   return (
@@ -389,26 +432,27 @@ function StateSurface({
 
 function WorkflowPanel({ active, role, compact = false }: { active: ModuleConfig; role: Role; compact?: boolean }) {
   const restricted = active.id === "bank" && role !== "admin";
+  const isSolver = active.id === "solver";
 
   return (
     <section className={compact ? "" : "rounded-lg border border-zinc-800 bg-zinc-950/55 p-4"}>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-zinc-100">{compact ? "Foundation Controls" : "Module controls"}</h2>
-        <span className="text-xs text-zinc-500">Issue #1 foundation state</span>
+        <h2 className="text-sm font-semibold text-zinc-100">{isSolver ? "会话操作" : compact ? "Foundation Controls" : "Module controls"}</h2>
+        <span className="text-xs text-zinc-500">{isSolver ? "AI Solver 会话边界" : "Issue #1 foundation state"}</span>
       </div>
       <div className="grid grid-cols-[1fr_1fr_auto] gap-3 max-[900px]:grid-cols-1">
         <button className="h-10 rounded-md border border-zinc-700 bg-zinc-100 px-3 text-sm font-medium text-zinc-950">
-          {active.primaryAction}
+          {isSolver ? "运行结构化解析" : active.primaryAction}
         </button>
         <button className="h-10 rounded-md border border-zinc-800 bg-zinc-950 px-3 text-sm text-zinc-200">
-          {active.secondaryAction}
+          {isSolver ? "编辑抽取文本" : active.secondaryAction}
         </button>
         <button
           disabled={restricted}
           className="h-10 rounded-md border border-zinc-800 bg-zinc-950 px-3 text-sm text-zinc-300 disabled:cursor-not-allowed disabled:opacity-40"
-          title={restricted ? "Admin role required" : "Admin action available"}
+          title={isSolver ? "AI Solver 当前无管理员专属操作" : restricted ? "Admin role required" : "Admin action available"}
         >
-          Admin-only action
+          {isSolver ? "仅管理员操作" : "Admin-only action"}
         </button>
       </div>
     </section>
@@ -420,23 +464,19 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
   const [materialRole, setMaterialRole] = useState("combined");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<Array<{ fileName: string; kind: string; sizeBytes: number }>>([]);
-  const [problemText, setProblemText] = useState(
-    "A uniform conducting rod of length L and mass m slides without friction on two parallel rails in a uniform magnetic field B. A constant force F is applied along the rails.",
-  );
-  const [diagramNotes, setDiagramNotes] = useState(
-    "Extraction is not connected yet. Confirm or edit diagram notes manually.",
-  );
+  const [problemText, setProblemText] = useState("");
+  const [diagramNotes, setDiagramNotes] = useState("");
   const [standardAnswer, setStandardAnswer] = useState("");
   const [confirmStandardAnswer, setConfirmStandardAnswer] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("Create a session, upload material, then confirm the extracted fields.");
-  const [analysisMessage, setAnalysisMessage] = useState("No standard answer, no AI solution.");
+  const [statusMessage, setStatusMessage] = useState("请先上传题目材料，再确认或编辑抽取字段。");
+  const [analysisMessage, setAnalysisMessage] = useState("没有已确认的标准答案，不能生成 AI 解析。");
   const [analysis, setAnalysis] = useState<AnalysisPayload | null>(null);
   const [selectedContext, setSelectedContext] = useState<FollowUpContext>({ type: "whole_analysis" });
   const [selectionDraft, setSelectionDraft] = useState<Extract<FollowUpContext, { type: "selected_text" }> | null>(null);
   const [messages, setMessages] = useState<FollowUpMessage[]>([]);
   const [question, setQuestion] = useState("");
   const [isFollowUpBusy, setIsFollowUpBusy] = useState(false);
-  const [followUpMessage, setFollowUpMessage] = useState("Follow-ups attach to this analysis and do not overwrite it.");
+  const [followUpMessage, setFollowUpMessage] = useState("追问会附着在本次解析会话中，不会覆盖原解析。");
   const [isBusy, setIsBusy] = useState(false);
 
   const hasConfirmedAnswer = confirmStandardAnswer && standardAnswer.trim().length > 0;
@@ -449,12 +489,12 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
     const response = await fetch("/api/ai-solver/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: "Local AI Solver upload validation" }),
+      body: JSON.stringify({ title: "AI 解题本地上传验证" }),
     });
     const payload = await response.json();
 
     if (!response.ok) {
-      throw new Error(payload.error ?? "Unable to create session.");
+      throw new Error(toChineseSolverError(payload.error, "无法创建解题会话。"));
     }
 
     setSessionId(payload.session.id);
@@ -467,20 +507,20 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
       const payload = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        setFollowUpMessage(payload.error ?? "Follow-up history is not connected yet.");
+        setFollowUpMessage(toChineseSolverError(payload.error, "追问历史暂未接入。"));
         return;
       }
 
       setMessages(normalizeFollowUpMessages(payload.messages));
-      setFollowUpMessage("Follow-up history loaded.");
+      setFollowUpMessage("已加载追问历史。");
     } catch {
-      setFollowUpMessage("Follow-up history is not connected yet.");
+      setFollowUpMessage("追问历史暂未接入。");
     }
   };
 
   const handleUpload = async () => {
     setIsBusy(true);
-    setStatusMessage("Validating upload on the server...");
+    setStatusMessage("正在由服务器校验上传材料...");
 
     try {
       const nextSessionId = await createSessionIfNeeded();
@@ -496,14 +536,17 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
       const payload = await response.json();
 
       if (!response.ok) {
-        throw new Error(payload.error ?? "Upload validation failed.");
+        throw new Error(toChineseSolverError(payload.error, "上传校验失败。"));
       }
 
       setUploadedFiles(payload.uploads);
-      setStatusMessage(`${payload.uploads.length} file(s) accepted. Extraction placeholder created; real extraction is not connected.`);
-      setDiagramNotes("Extraction is not connected yet. Confirm or edit diagram notes manually.");
+      setStatusMessage(`已接收 ${payload.uploads.length} 个文件。文本抽取暂未接入，请手动填写并确认下方字段。`);
+      setProblemText("");
+      setDiagramNotes("");
+      setStandardAnswer("");
+      setConfirmStandardAnswer(false);
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : "Upload failed.");
+      setStatusMessage(error instanceof Error ? error.message : "上传失败。");
     } finally {
       setIsBusy(false);
     }
@@ -528,16 +571,16 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
       const payload = await response.json();
 
       if (!response.ok) {
-        throw new Error(payload.error ?? "Confirmation failed.");
+        throw new Error(toChineseSolverError(payload.error, "确认失败。"));
       }
 
       setStatusMessage(
         payload.extraction.isStandardAnswerConfirmed
-          ? "Standard answer confirmed. Server gate can now allow the next analysis step."
-          : "Fields saved, but the standard answer is not confirmed.",
+          ? "标准答案已确认；服务器校验通过后才能进入结构化解析。"
+          : "字段已保存，但标准答案尚未确认。",
       );
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : "Confirmation failed.");
+      setStatusMessage(error instanceof Error ? error.message : "确认失败。");
     } finally {
       setIsBusy(false);
     }
@@ -545,7 +588,7 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
 
   const handleAnalyze = async () => {
     setIsBusy(true);
-    setAnalysisMessage("Saving confirmation before analysis...");
+    setAnalysisMessage("正在保存确认字段，然后启动解析...");
 
     try {
       const nextSessionId = await createSessionIfNeeded();
@@ -563,14 +606,14 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
       const confirmPayload = await confirmResponse.json();
 
       if (!confirmResponse.ok) {
-        throw new Error(confirmPayload.error ?? "Confirmation failed.");
+        throw new Error(toChineseSolverError(confirmPayload.error, "确认失败。"));
       }
 
       if (!confirmPayload.extraction?.isStandardAnswerConfirmed) {
-        throw new Error("Confirm a non-empty standard answer before running analysis.");
+        throw new Error("请先确认非空标准答案，再运行 AI 解析。");
       }
 
-      setStatusMessage("Standard answer confirmed. Running structured analysis...");
+      setStatusMessage("标准答案已确认，正在运行结构化解析...");
       const response = await fetch("/api/ai-solver/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -579,12 +622,12 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
       const payload = await response.json();
 
       if (!response.ok) {
-        throw new Error(payload.error ?? "Analysis rejected.");
+        throw new Error(toChineseSolverError(payload.error, "解析请求被拒绝。"));
       }
 
       if (!payload.analysis?.sections) {
         setAnalysis(null);
-        setAnalysisMessage("Analysis endpoint responded, but no structured analysis was returned yet.");
+        setAnalysisMessage("解析接口已有响应，但尚未返回结构化解析内容。");
         return;
       }
 
@@ -592,7 +635,7 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
       setAnalysisMessage(buildAnalysisStatus(payload.analysis));
       void loadFollowUps(nextSessionId);
     } catch (error) {
-      setAnalysisMessage(error instanceof Error ? error.message : "Analysis failed.");
+      setAnalysisMessage(error instanceof Error ? error.message : "解析失败。");
     } finally {
       setIsBusy(false);
     }
@@ -623,12 +666,12 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
     const context = overrideContext ?? selectedContext;
 
     if (!nextQuestion) {
-      setFollowUpMessage("Enter a follow-up question first.");
+      setFollowUpMessage("请先输入追问内容。");
       return;
     }
 
     setIsFollowUpBusy(true);
-    setFollowUpMessage("Sending follow-up...");
+    setFollowUpMessage("正在发送追问...");
 
     try {
       const nextSessionId = await createSessionIfNeeded();
@@ -645,7 +688,7 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
       const payload = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(payload.error ?? "Follow-up failed.");
+        throw new Error(toChineseSolverError(payload.error, "追问失败。"));
       }
 
       const nextMessages = normalizeFollowUpMessages(
@@ -655,9 +698,9 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
       setQuestion("");
       setSelectionDraft(null);
       setSelectedContext({ type: "whole_analysis" });
-      setFollowUpMessage("Follow-up added to this analysis.");
+      setFollowUpMessage("追问已加入本次解析。");
     } catch (error) {
-      setFollowUpMessage(error instanceof Error ? error.message : "Follow-up failed.");
+      setFollowUpMessage(error instanceof Error ? error.message : "追问失败。");
     } finally {
       setIsFollowUpBusy(false);
     }
@@ -667,8 +710,8 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
     <>
       <section className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-zinc-100">1. Uploaded Materials</h2>
-          <span className="text-xs text-zinc-500">Server validation foundation</span>
+          <h2 className="text-sm font-semibold text-zinc-100">1. 上传材料</h2>
+          <span className="text-xs text-zinc-500">服务器校验</span>
         </div>
         <div className="grid grid-cols-[180px_minmax(0,1fr)_auto] gap-3 max-[900px]:grid-cols-1">
           <select
@@ -676,9 +719,9 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
             onChange={(event) => setMaterialRole(event.target.value)}
             className="h-10 rounded-md border border-zinc-800 bg-[#0b0f12] px-3 text-sm text-zinc-100 outline-none"
           >
-            <option value="combined">Combined</option>
-            <option value="problem">Problem</option>
-            <option value="answer">Answer</option>
+            <option value="combined">题目与标准答案</option>
+            <option value="problem">题目</option>
+            <option value="answer">标准答案</option>
           </select>
           <input
             type="file"
@@ -692,7 +735,7 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
             disabled={isBusy}
             className="h-10 rounded-md border border-zinc-700 bg-zinc-100 px-3 text-sm font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Upload
+            上传
           </button>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-3 max-[900px]:grid-cols-1">
@@ -700,41 +743,44 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
             uploadedFiles.map((file) => (
               <FileCard
                 key={file.fileName}
-                title={`${materialRole} material`}
+                title={`${materialRoleLabels[materialRole] ?? "材料"}材料`}
                 fileName={file.fileName}
                 status={`${file.kind.toUpperCase()} / ${formatBytes(file.sizeBytes)}`}
               />
             ))
           ) : (
             <Notice
-              title="No uploaded material in this local session"
-              body="Use the upload control to exercise the server-side file count, MIME, extension, and size checks."
+              title="本会话尚未上传材料"
+              body="请上传真实题目材料；服务器会校验文件数量、MIME、扩展名和大小。"
             />
           )}
         </div>
         <p className="mt-3 text-xs text-zinc-400">{statusMessage}</p>
-        <p className="mt-3 text-xs text-zinc-500">Accepted formats: image, PDF, DOCX. Old .doc is not supported.</p>
+        <p className="mt-3 text-xs text-zinc-500">支持格式：图片、PDF、DOCX。不支持旧版 .doc。</p>
       </section>
       <section className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-zinc-100">2. Confirm & Edit Extracted Text</h2>
-          <span className="text-xs text-amber-300">Extraction not connected</span>
+          <h2 className="text-sm font-semibold text-zinc-100">2. 确认与编辑抽取文本</h2>
+          <span className="text-xs text-amber-300">真实文本抽取未接入</span>
         </div>
         <div className="grid grid-cols-3 gap-3 max-[1120px]:grid-cols-1">
           <ExtractedTextCard
-            title="Problem Text"
+            title="题目文本"
             body={problemText}
             onChange={setProblemText}
+            placeholder="真实文本抽取未接入。请在上传后手动填写题目文本。"
           />
           <ExtractedTextCard
-            title="Diagram Notes"
+            title="图像/图示说明"
             body={diagramNotes}
             onChange={setDiagramNotes}
+            placeholder="如题目含图，请手动填写关键图示、坐标、方向和约束信息。"
           />
           <ExtractedTextCard
-            title="Standard Answer"
+            title="标准答案"
             body={standardAnswer}
             onChange={setStandardAnswer}
+            placeholder="必须填写并确认标准答案；没有标准答案不能运行 AI 解析。"
           />
         </div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -745,30 +791,30 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
               onChange={(event) => setConfirmStandardAnswer(event.target.checked)}
               className="h-4 w-4 accent-zinc-100"
             />
-            Confirm standard answer
+            确认标准答案
           </label>
           <button
             onClick={handleConfirm}
             disabled={isBusy}
             className="h-9 rounded-md border border-zinc-700 bg-zinc-100 px-3 text-sm font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Save confirmation
+            保存确认
           </button>
         </div>
       </section>
       <section className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold">3. AI Analysis</h2>
-            <p className="mt-1 text-xs text-zinc-500">Seven fixed sections with attached follow-up threads</p>
+            <h2 className="text-sm font-semibold">3. AI 解析</h2>
+            <p className="mt-1 text-xs text-zinc-500">固定七个解析区块，追问附着在当前会话</p>
           </div>
           <button
             onClick={handleAnalyze}
             disabled={isBusy || !hasConfirmedAnswer}
             className="h-9 rounded-md border border-zinc-700 bg-zinc-100 px-3 text-sm font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50"
-            title={!hasConfirmedAnswer ? "Confirm a non-empty standard answer first" : active.primaryAction}
+            title={!hasConfirmedAnswer ? "请先确认非空标准答案" : "运行结构化解析"}
           >
-            {isBusy ? "Running..." : "Run structured analysis"}
+            {isBusy ? "解析中..." : "运行结构化解析"}
           </button>
         </div>
         <div className="mb-3 rounded-md border border-zinc-800 bg-[#0b0f12] p-3">
@@ -792,7 +838,7 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
                 retrievalStatus={analysis?.retrieval_status}
                 onAskSection={() => {
                   setSelectedContext({ type: "section", sectionKey: section.key });
-                  setQuestion(`Explain the "${section.label}" section in more detail.`);
+                  setQuestion(`请更详细地解释“${section.label}”这一部分。`);
                 }}
                 onSelectText={(sectionText) => handleSectionSelection(section.key, sectionText)}
               />
@@ -800,24 +846,24 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
           </div>
           <section className="min-w-0 rounded-md border border-zinc-800 bg-[#0b0f12] p-3">
             <div className="mb-3 flex items-center justify-between gap-3">
-              <h3 className="text-sm font-semibold text-zinc-100">Follow-up thread</h3>
+              <h3 className="text-sm font-semibold text-zinc-100">追问线程</h3>
               <span className="rounded border border-zinc-800 px-2 py-0.5 text-xs text-zinc-500">
-                {messages.length} messages
+                {messages.length} 条消息
               </span>
             </div>
             {selectionDraft ? (
               <div className="mb-3 rounded-md border border-zinc-700 bg-zinc-950 p-3">
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="text-xs font-medium text-zinc-200">Selected text</p>
+                  <p className="text-xs font-medium text-zinc-200">已选文本</p>
                   <button
                     type="button"
                     onClick={() => {
                       setSelectedContext(selectionDraft);
-                      setQuestion("Can you explain this selected part?");
+                      setQuestion("请解释这段选中的内容。");
                     }}
                     className="h-7 rounded-md border border-zinc-700 px-2 text-xs text-zinc-200 hover:bg-zinc-900"
                   >
-                    Ask about selection
+                    追问选中内容
                   </button>
                 </div>
                 <p className="line-clamp-4 text-xs leading-5 text-zinc-400">{selectionDraft.selection.text}</p>
@@ -888,7 +934,7 @@ function AnalysisSectionPanel({
           onClick={onAskSection}
           className="h-7 rounded-md border border-zinc-800 px-2 text-xs text-zinc-300 hover:bg-zinc-900 hover:text-zinc-100"
         >
-          Ask about section
+          追问本段
         </button>
       </div>
     </details>
@@ -910,15 +956,15 @@ function SectionContent({
 
     return (
       <>
-        <p>{typeof related.model_explanation === "string" && related.model_explanation ? related.model_explanation : "Model explanation will appear here after analysis."}</p>
+        <p>{typeof related.model_explanation === "string" && related.model_explanation ? related.model_explanation : "解析运行后会在这里显示模型归纳说明。"}</p>
         {problems.length > 0 ? (
           <div className="space-y-2">
             {problems.map((problem, index) => (
-              <RetrievedRecord key={String(isRecord(problem) ? problem.id ?? index : index)} record={problem} fallbackLabel="Problem Bank record" />
+              <RetrievedRecord key={String(isRecord(problem) ? problem.id ?? index : index)} record={problem} fallbackLabel="题库真实记录" />
             ))}
           </div>
         ) : (
-          <EmptyRetrievalNotice label="Similar Problem Bank retrieval" status={retrievalStatus?.similar_problems} />
+          <EmptyRetrievalNotice label="相似题库检索" status={retrievalStatus?.similar_problems} />
         )}
       </>
     );
@@ -930,15 +976,15 @@ function SectionContent({
 
     return (
       <>
-        <p>{typeof related.summary === "string" && related.summary ? related.summary : "Related article summary will appear here after analysis."}</p>
+        <p>{typeof related.summary === "string" && related.summary ? related.summary : "解析运行后会在这里显示相关文章摘要。"}</p>
         {records.length > 0 ? (
           <div className="space-y-2">
             {records.map((article, index) => (
-              <RetrievedRecord key={String(isRecord(article) ? article.id ?? index : index)} record={article} fallbackLabel="Article Plaza record" />
+              <RetrievedRecord key={String(isRecord(article) ? article.id ?? index : index)} record={article} fallbackLabel="文章广场真实记录" />
             ))}
           </div>
         ) : (
-          <EmptyRetrievalNotice label="Related Article Plaza retrieval" status={retrievalStatus?.related_articles} />
+          <EmptyRetrievalNotice label="相关文章检索" status={retrievalStatus?.related_articles} />
         )}
       </>
     );
@@ -1004,7 +1050,7 @@ function FollowUpComposer({
           onClick={() => onContextChange({ type: "whole_analysis" })}
           className={contextButtonClass(context.type === "whole_analysis")}
         >
-          Whole analysis
+          整体解析
         </button>
         {fixedAnalysisSections.map((section) => (
           <button
@@ -1013,7 +1059,7 @@ function FollowUpComposer({
             onClick={() => onContextChange({ type: "section", sectionKey: section.key })}
             className={contextButtonClass(context.type === "section" && context.sectionKey === section.key)}
           >
-            {section.label.replace("Physical reasoning reconstruction", "Reasoning").replace("Related models / similar problems", "Similar").replace("Step-by-step derivation", "Derivation")}
+            {getShortSectionLabel(section.key)}
           </button>
         ))}
       </div>
@@ -1022,7 +1068,7 @@ function FollowUpComposer({
         onChange={(event) => onQuestionChange(event.target.value)}
         disabled={disabled}
         className="h-[86px] w-full resize-none rounded-md border border-zinc-800 bg-[#0b0f12] p-3 text-sm leading-5 text-zinc-100 outline-none placeholder:text-zinc-600 disabled:cursor-not-allowed disabled:opacity-50"
-        placeholder={disabled ? "Run analysis before asking follow-ups." : "Ask about the whole analysis, a section, selected text, or a prior answer..."}
+        placeholder={disabled ? "请先运行解析，再继续追问。" : "可针对整体解析、某个区块、选中文本或上一条回答追问..."}
       />
       <div className="mt-2 flex items-center justify-between gap-3">
         <p className="min-w-0 truncate text-xs text-zinc-500">{contextLabel(context)}</p>
@@ -1032,7 +1078,7 @@ function FollowUpComposer({
           disabled={disabled}
           className="h-8 rounded-md border border-zinc-700 bg-zinc-100 px-3 text-xs font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Ask
+          发送
         </button>
       </div>
     </div>
@@ -1053,7 +1099,7 @@ function ThreadedMessages({
     <div className="mt-3 max-h-[520px] space-y-2 overflow-y-auto pr-1">
       {messages.length === 0 ? (
         <div className="rounded-md border border-zinc-800 p-3 text-sm text-zinc-500">
-          No follow-ups yet. Ask about the full analysis or select text inside a section.
+          暂无追问。可以针对整体解析提问，也可以选中某个区块中的文本后追问。
         </div>
       ) : (
         roots.map((message) => (
@@ -1081,9 +1127,9 @@ function MessageNode({
     <div className={depth > 0 ? "ml-3 border-l border-zinc-800 pl-3" : ""}>
       <article className={`rounded-md border p-3 ${message.role === "assistant" ? "border-zinc-800 bg-[#0b0f12]" : "border-zinc-700 bg-zinc-900/60"}`}>
         <div className="mb-2 flex items-center justify-between gap-3">
-          <span className="text-xs font-medium capitalize text-zinc-300">{message.role}</span>
+          <span className="text-xs font-medium text-zinc-300">{message.role === "assistant" ? "AI 助手" : "学生"}</span>
           <button type="button" onClick={() => onReply(message.id)} className="text-xs text-zinc-500 hover:text-zinc-100">
-            Reply
+            回复
           </button>
         </div>
         <p className="whitespace-pre-wrap text-sm leading-6 text-zinc-300">{message.content}</p>
@@ -1102,7 +1148,7 @@ function MessageNode({
 function RetrievedRecord({ record, fallbackLabel }: { record: unknown; fallbackLabel: string }) {
   const safeRecord = isRecord(record) ? record : {};
   const title = String(safeRecord.title ?? safeRecord.name ?? fallbackLabel);
-  const subtitle = String(safeRecord.source ?? safeRecord.author ?? safeRecord.status ?? "Retrieved database record");
+  const subtitle = String(safeRecord.source ?? safeRecord.author ?? safeRecord.status ?? "真实数据库记录");
 
   return (
     <div className="rounded-md border border-zinc-800 bg-zinc-950 p-3">
@@ -1120,8 +1166,8 @@ function EmptyRetrievalNotice({ label, status }: { label: string; status?: strin
       <p className="text-sm text-zinc-300">{label}</p>
       <p className="mt-1 text-xs text-zinc-500">
         {isNotConnected
-          ? "Retrieval is not connected, so no records are shown."
-          : "No retrieved records were returned for this analysis."}
+          ? "真实检索未接入，因此不显示任何题目或文章记录。"
+          : "本次真实检索没有返回记录。"}
       </p>
     </div>
   );
@@ -1168,14 +1214,14 @@ function mergeFollowUpMessages(current: FollowUpMessage[], next: FollowUpMessage
 
 function buildAnalysisStatus(analysis: AnalysisPayload) {
   if (analysis.provider?.ran) {
-    return "Structured analysis returned.";
+    return "已返回结构化解析。";
   }
 
   if (analysis.provider?.configured === false) {
-    return "Structured analysis returned. Provider is not configured for future runs.";
+    return "已返回结构化解析；后续运行所需的服务器端 AI 配置尚未完成。";
   }
 
-  return "Structured analysis returned.";
+  return "已返回结构化解析。";
 }
 
 function contextButtonClass(active: boolean) {
@@ -1188,27 +1234,27 @@ function contextButtonClass(active: boolean) {
 
 function contextLabel(context: FollowUpContext) {
   if (context.type === "whole_analysis") {
-    return "Context: whole analysis";
+    return "上下文：整体解析";
   }
 
   if (context.type === "section") {
-    return `Context: ${fixedAnalysisSections.find((section) => section.key === context.sectionKey)?.label ?? context.sectionKey}`;
+    return `上下文：${fixedAnalysisSections.find((section) => section.key === context.sectionKey)?.label ?? context.sectionKey}`;
   }
 
   if (context.type === "selected_text") {
-    return `Context: selected text, ${context.selection.text.length} characters`;
+    return `上下文：选中文本，${context.selection.text.length} 个字符`;
   }
 
-  return `Replying to message ${context.parentMessageId}`;
+  return `正在回复消息 ${context.parentMessageId}`;
 }
 
 function getRetrievalLabel(sectionKey: AnalysisSectionKey, retrievalStatus?: AnalysisPayload["retrieval_status"]) {
   if (sectionKey === "related_models_similar_problems") {
-    return retrievalStatus?.similar_problems === "not_connected" ? "not connected" : retrievalStatus?.similar_problems ?? "pending";
+    return getChineseRetrievalStatus(retrievalStatus?.similar_problems);
   }
 
   if (sectionKey === "related_articles") {
-    return retrievalStatus?.related_articles === "not_connected" ? "not connected" : retrievalStatus?.related_articles ?? "pending";
+    return getChineseRetrievalStatus(retrievalStatus?.related_articles);
   }
 
   return "";
@@ -1216,14 +1262,118 @@ function getRetrievalLabel(sectionKey: AnalysisSectionKey, retrievalStatus?: Ana
 
 function getEmptySectionText(sectionKey: AnalysisSectionKey) {
   if (sectionKey === "related_models_similar_problems") {
-    return "Similar problems require real Problem Bank retrieval.";
+    return "相似题必须来自真实 Problem Bank 检索；真实检索未接入时不会显示编造记录。";
   }
 
   if (sectionKey === "related_articles") {
-    return "Related articles require real Article Plaza retrieval.";
+    return "相关文章必须来自真实 Article Plaza 检索；真实检索未接入时不会显示编造记录。";
   }
 
-  return "Run structured analysis to populate this section.";
+  return "运行结构化解析后，本区块会显示结果。";
+}
+
+function getShortSectionLabel(sectionKey: AnalysisSectionKey) {
+  const labels: Record<AnalysisSectionKey, string> = {
+    step_by_step_derivation: "推导",
+    physical_reasoning_reconstruction: "图景",
+    related_models_similar_problems: "相似题",
+    related_articles: "文章",
+    key_handling: "关键",
+    write_article: "写作",
+    add_to_personal_library: "资料库",
+  };
+
+  return labels[sectionKey];
+}
+
+function getChineseRetrievalStatus(status?: string) {
+  if (!status || status === "not_connected") {
+    return "真实检索未接入";
+  }
+
+  if (status === "connected") {
+    return "真实检索已接入";
+  }
+
+  if (status === "empty") {
+    return "无返回记录";
+  }
+
+  return "检索状态待确认";
+}
+
+function getChineseShellState(state: ShellState) {
+  const labels: Record<ShellState, string> = {
+    ready: "就绪",
+    loading: "加载中",
+    empty: "空状态",
+    error: "错误",
+    permission: "权限受限",
+  };
+
+  return labels[state];
+}
+
+function getChineseRole(role: Role) {
+  return role === "admin" ? "管理员" : "学生";
+}
+
+function toChineseSolverError(error: unknown, fallback: string) {
+  const message = typeof error === "string" ? error : "";
+
+  if (!message) {
+    return fallback;
+  }
+
+  if (message.includes("Upload at least one material file")) {
+    return "请至少上传一个材料文件。";
+  }
+
+  if (message.includes("Image uploads support 1 to 10 files")) {
+    return "图片上传支持 1 到 10 张。";
+  }
+
+  if (message.includes("PDF uploads support exactly one file")) {
+    return "PDF 上传一次只能包含 1 个文件。";
+  }
+
+  if (message.includes("DOCX uploads support exactly one file")) {
+    return "DOCX 上传一次只能包含 1 个文件。";
+  }
+
+  if (message.includes("Old .doc files are not supported")) {
+    return "不支持旧版 .doc 文件，请上传 .docx。";
+  }
+
+  if (message.includes("PDF files must be 25 MB or smaller")) {
+    return "PDF 文件大小不能超过 25 MB。";
+  }
+
+  if (message.includes("DOCX files must be 15 MB or smaller")) {
+    return "DOCX 文件大小不能超过 15 MB。";
+  }
+
+  if (message.includes("Unsupported file type")) {
+    return "文件类型不支持，请使用图片、PDF 或 DOCX。";
+  }
+
+  if (message.includes("No standard answer, no AI solution") || message.includes("Confirm a non-empty standard answer")) {
+    return "没有已确认的非空标准答案，不能生成 AI 解析。";
+  }
+
+  if (message.includes("Run structured analysis before follow-up")) {
+    return "请先运行结构化解析，再继续追问。";
+  }
+
+  if (message.includes("follow-up message content is required")) {
+    return "请先输入追问内容。";
+  }
+
+  if (message.includes("provider") || message.includes("AI provider")) {
+    return "服务器端 AI 解析暂时不可用，请稍后重试。";
+  }
+
+  return fallback;
 }
 
 function sectionToPlainText(value: unknown): string {
@@ -1254,21 +1404,24 @@ function ExtractedTextCard({
   title,
   body,
   onChange,
+  placeholder,
 }: {
   title: string;
   body: string;
   onChange: (value: string) => void;
+  placeholder: string;
 }) {
   return (
     <article className="min-h-[210px] rounded-md border border-zinc-800 bg-[#0b0f12] p-3">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-zinc-100">{title}</h3>
-        <span className="text-xs text-zinc-500">Editable</span>
+        <span className="text-xs text-zinc-500">可编辑</span>
       </div>
       <textarea
         value={body}
         onChange={(event) => onChange(event.target.value)}
-        className="h-[158px] w-full resize-none rounded border border-zinc-800 bg-zinc-950 p-3 text-sm leading-6 text-zinc-300 outline-none"
+        placeholder={placeholder}
+        className="h-[158px] w-full resize-none rounded border border-zinc-800 bg-zinc-950 p-3 text-sm leading-6 text-zinc-300 outline-none placeholder:text-zinc-600"
       />
     </article>
   );
@@ -1283,7 +1436,7 @@ function FileCard({ title, fileName, status }: { title: string; fileName: string
           <p className="text-sm text-zinc-100">{fileName}</p>
           <p className="text-xs text-zinc-500">{status}</p>
         </div>
-        <span className="text-emerald-400">Ready</span>
+        <span className="text-emerald-400">已就绪</span>
       </div>
     </article>
   );
@@ -1569,7 +1722,7 @@ function RightPanel({
   const firstArticle = articles[0];
 
   const title =
-    active.id === "articles" ? "Article Info" : active.id === "library" ? "Item Details" : active.id === "bank" ? "Selected Problem" : "Problem Info";
+    active.id === "articles" ? "Article Info" : active.id === "library" ? "Item Details" : active.id === "bank" ? "Selected Problem" : "会话信息";
   const primaryDetails =
     active.id === "articles"
       ? [
@@ -1593,10 +1746,10 @@ function RightPanel({
               ["Model tags", firstProblem.modelTags.join(", ")],
             ]
           : [
-              ["Topic", "Electromagnetism"],
-              ["Source", "IPhO 2016, Q2"],
-              ["Difficulty", "Hard"],
-              ["State", shellState],
+              ["材料状态", "等待真实上传"],
+              ["文本抽取", "真实抽取未接入"],
+              ["标准答案", "未确认"],
+              ["会话状态", getChineseShellState(shellState)],
             ];
 
   const actions =
@@ -1606,7 +1759,7 @@ function RightPanel({
         ? ["Open", "Edit", "Publish", "Move to folder"]
         : active.id === "bank"
           ? ["Open full detail", "Start AI analysis", "Add to my library", "Report an issue"]
-          : ["Save session", "Create article draft", "Add problem to library", "Export analysis (PDF)", "Share session"];
+          : ["保存会话", "创建文章草稿", "加入个人资料库", "导出解析（PDF）", "分享会话"];
 
   return (
     <aside className="space-y-4 bg-[#090d10] p-4 max-[1180px]:hidden">
@@ -1616,21 +1769,21 @@ function RightPanel({
           {primaryDetails.map(([label, value]) => (
             <Detail key={label} label={label} value={value} />
           ))}
-          <Detail label="Role preview" value={role} />
+          <Detail label={active.id === "solver" ? "角色预览" : "Role preview"} value={active.id === "solver" ? getChineseRole(role) : role} />
         </div>
       </section>
       <section className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-4">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-zinc-100">Session Notes</h2>
-          <button className="text-xs text-zinc-400 hover:text-zinc-100">Edit</button>
+          <h2 className="text-sm font-semibold text-zinc-100">{active.id === "solver" ? "会话笔记" : "Session Notes"}</h2>
+          <button className="text-xs text-zinc-400 hover:text-zinc-100">{active.id === "solver" ? "编辑" : "Edit"}</button>
         </div>
         <textarea
           className="h-[106px] w-full resize-none rounded-md border border-zinc-800 bg-[#0b0f12] p-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600"
-          placeholder="Add your notes for this session..."
+          placeholder={active.id === "solver" ? "记录本次解题笔记..." : "Add your notes for this session..."}
         />
       </section>
       <section className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-4">
-        <h2 className="mb-4 text-sm font-semibold text-zinc-100">Actions</h2>
+        <h2 className="mb-4 text-sm font-semibold text-zinc-100">{active.id === "solver" ? "操作" : "Actions"}</h2>
         <div className="space-y-2">
           {actions.map((action) => (
             <button
@@ -1641,12 +1794,14 @@ function RightPanel({
             </button>
           ))}
           <button className="h-9 w-full rounded-md border border-red-950/80 bg-[#0b0f12] px-3 text-left text-sm text-red-400">
-            {active.id === "library" ? "Delete" : active.id === "articles" ? "Unpublish article" : active.id === "bank" ? "Admin edit disabled" : "Delete draft"}
+            {active.id === "library" ? "Delete" : active.id === "articles" ? "Unpublish article" : active.id === "bank" ? "Admin edit disabled" : "删除草稿"}
           </button>
         </div>
       </section>
       <p className="px-1 text-xs leading-5 text-zinc-500">
-        Foundation build. AI Solver gates and upload validation are server-side; extraction, persistence wiring, and provider calls remain staged.
+        {active.id === "solver"
+          ? "AI Solver 的标准答案门禁和上传校验由服务器执行；文本抽取、持久化接线和后续能力按阶段接入。"
+          : "Foundation build. AI Solver gates and upload validation are server-side; extraction, persistence wiring, and provider calls remain staged."}
       </p>
     </aside>
   );
