@@ -14,6 +14,14 @@ This file tracks the progress of the CPHO AI platform development. It serves as 
 ## History
 - 2026-05-09: Initial setup of the Agentic Harness branch and documentation.
 
+## Current Epic: Issue #11 Shared Shell Contract
+**Target Branch**: `codex/issue-11-shell-contract`
+**Goal**: Localize shared shell navigation/state data and remove seeded demo records from the shell data contract.
+
+| ID | Task | Branch | Status | Owner | Notes |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| SHELL-11A | Chinese shell data contract | `codex/issue-11-shell-contract` | ✅ Done | worker-shell | Localized module/sidebar/action/state/analysis labels; replaced seeded problem/article/library records with typed empty arrays and explicit empty-state metadata. |
+
 ## Current Epic: Issue #10 AI Solver OpenRouter Gemini multimodal orchestration
 **Target Branch**: `feature/openrouter-gemini-multimodal`
 **Goal**: Implement server-side OpenRouter/Gemini multimodal AI Solver analysis with model-driven decomposition, fixed 7-section assembly, threaded follow-up Q&A, selected-text Q&A, and retrieval boundary enforcement.
