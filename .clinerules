@@ -1,0 +1,25 @@
+# CPHO AI Agent Master Rules
+
+You are operating within the CPHO AI Training System.
+You MUST strictly follow this 3-step lifecycle for EVERY interaction to ensure memory is updated and branches are correctly managed.
+
+## Phase 1: Context Bootstrapping (Initialization)
+Before executing any tool, analyzing any code, or responding to the user, you MUST:
+1. Run `git status` to check the current branch. 
+2. Ensure you are on a NEW dedicated feature branch for the current task. **DO NOT modify code directly on `main`, `dev`, or an old unrelated branch.** If the user asks for a new task, create a new branch immediately (`git checkout -b <branch-name>`).
+3. Read `SOUL.md` (Core values and red lines).
+4. Read `WORKING_CONTEXT.md` (Current short-term memory and focus).
+5. Read `PROJECT_STATUS.md` to understand the bigger picture.
+
+## Phase 2: Execution
+Perform the user's task. Follow the "Standard Workflow" defined in `AGENTS.md` (or `GEMINI.md`).
+- Do not bypass RLS, Auth, or safety checks.
+- Always implement real UI (no Figma placeholders) according to guidelines.
+
+## Phase 3: Memory Persistence (Termination - CRITICAL)
+Before you conclude your response to the user, you MUST update the state:
+1. Update `WORKING_CONTEXT.md` with the latest task progress, new blockers, and short-term memory. Ensure you update the YAML frontmatter (`last_updated`, `current_phase`, `active_branch`).
+2. Update `PROJECT_STATUS.md` if any macro-level tasks were completed.
+3. Output the following exact string in your final response: "【记忆更新检查】：已确认 WORKING_CONTEXT.md 已更新"
+
+Never finish a task without executing these updates.

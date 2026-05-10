@@ -50,4 +50,16 @@
 
 ### 🛑 交互干预区
 
-*(等待用户或项目经理的进一步指令)*
+---
+
+## Current Epic: Problem Bank Full Implementation
+**Target Branch**: `dev`
+**Goal**: Complete the Problem Bank module for both students and admins, including search, management, and cross-module integration.
+
+| ID | Task | Branch | Status | Owner | Notes |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| PB-1 | [Admin] Auth & Management Dashboard | `feature/pb-admin-auth-list` | ✅ Done | worker-modules | Implemented admin list with server-side search and role verification. |
+| PB-2 | [Admin] Edit/Delete Functionality | `feature/pb-admin-edit-delete` | ✅ Done | worker-modules | Implemented updateProblem and deleteProblem with storage cleanup. |
+| PB-3 | [Student] Search & Discovery UI | `feature/pb-student-search` | ✅ Done | worker-modules | Implemented faceted search (title, category, topics) and sidebar filters. |
+| PB-4 | [Integration] Action Buttons & Solver Handoff | `feature/pb-integration-solver` | ✅ Done | worker-solver | Connected "Solve with AI" to session initialization and standard-answer handoff. |
+| PB-5 | [Student] Related Content Section | `feature/pb-related-content` | ✅ Done | worker-modules | Added related content placeholders with explicit "Not Connected" guards. |
