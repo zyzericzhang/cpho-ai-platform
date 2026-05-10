@@ -14,6 +14,18 @@ This file tracks the progress of the CPHO AI platform development. It serves as 
 ## History
 - 2026-05-09: Initial setup of the Agentic Harness branch and documentation.
 
+## Current Epic: Issue #11 中文化真实页面内容与导览逻辑
+**Target Branch**: `codex/issue-11-integration-verify`
+**GitHub Issue**: https://github.com/zyzericzhang/cpho-ai-platform/issues/11
+**Goal**: Convert app shell and core modules from English mock/demo UI to usable Chinese real-state pages, remove seeded fake records, and preserve navigation, empty/error/permission, selected item, and AI Solver standard-answer gates.
+
+| ID | Task | Branch | Status | Owner | Notes |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| UI11-A | Shared shell contract and Chinese navigation/state data | `codex/issue-11-shell-contract` | ✅ Done | worker-shell / Planck | Commit `9a072812`; localized module/sidebar/action/state/analysis labels; replaced seeded problem/article/library records with typed empty arrays and explicit empty-state metadata. |
+| UI11-B | AI Solver Chinese real-session flow | `codex/issue-11-ai-solver-cn` | ✅ Done | worker-solver / Popper | Commit `c66a1180`; Chinese AI Solver UI, no fake seeded problem/material content, upload cards only after actual upload response, retrieval sections say `真实检索未接入`. |
+| UI11-C | Problem Bank, Article Plaza, Library real empty-state views | `codex/issue-11-real-state-modules` | ✅ Done | worker-modules / Ptolemy | Commit `da1bef14`; non-Solver modules guard empty lists, no fake default rows/readers/selections, student admin actions disabled with Chinese reason. |
+| UI11-D | Integration, browser verification, and risk audit | `codex/issue-11-integration-verify` | ✅ Done | coordinator | Integrated worker branches; `npm run lint`, `npx tsc --noEmit`, `git diff --check`, and `npx next build --webpack` pass. `npm run build` is blocked by the known Next 16 Turbopack worktree root inference issue. Browser evidence: `qa/issue-11/desktop-ai-solver.png`, `qa/issue-11/mobile-ai-solver.png`. |
+
 ## Current Epic: Issue #10 AI Solver OpenRouter Gemini multimodal orchestration
 **Target Branch**: `feature/openrouter-gemini-multimodal`
 **Goal**: Implement server-side OpenRouter/Gemini multimodal AI Solver analysis with model-driven decomposition, fixed 7-section assembly, threaded follow-up Q&A, selected-text Q&A, and retrieval boundary enforcement.
