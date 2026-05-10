@@ -5,8 +5,10 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   articles,
   libraryGroups,
+  moduleEmptyStates,
   modules,
   problems,
+  shellStateLabels,
   type ModuleConfig,
   type ModuleId,
   type Role,
@@ -66,30 +68,11 @@ const materialRoleLabels: Record<string, string> = {
   answer: "标准答案",
 };
 
-function getModuleLabel(moduleItem: ModuleConfig) {
-  return moduleItem.id === "solver" ? "AI 解题" : moduleItem.label;
-}
-
-function getSidebarItemLabel(moduleId: ModuleId, label: string) {
-  if (moduleId !== "solver") {
-    return label;
-  }
-
-  const labels: Record<string, string> = {
-    "New Analysis": "新建解析",
-    Sessions: "历史会话",
-    "Uploaded Materials": "上传材料",
-    Feedback: "反馈",
-  };
-
-  return labels[label] ?? label;
-}
-
 export function AppShell() {
   const [activeModule, setActiveModule] = useState<ModuleId>("solver");
   const [shellState, setShellState] = useState<ShellState>("ready");
   const [role, setRole] = useState<Role>("student");
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
   const [user, setUser] = useState<User | null>(null);
 
   const supabase = createClient();
@@ -145,18 +128,23 @@ export function AppShell() {
     [activeModule],
   );
 
+  const handleModuleChange = (moduleId: ModuleId) => {
+    setActiveModule(moduleId);
+    setSelectedIndex(-1);
+  };
+
   return (
     <main className="min-h-screen overflow-hidden bg-[#080b0d] text-zinc-100">
       <TopBar 
         activeModule={activeModule} 
-        onModuleChange={setActiveModule} 
+        onModuleChange={handleModuleChange}
         user={user}
         onLogout={handleLogout}
         onLogin={handleLogin}
       />
       <div className="grid min-h-[calc(100vh-54px)] grid-cols-[246px_minmax(0,1fr)_300px] max-[1180px]:grid-cols-[220px_minmax(0,1fr)] max-[760px]:grid-cols-1">
         <Sidebar active={active} role={role} />
-        <section className="min-w-0 border-r border-zinc-800/90 bg-[#080b0d] px-7 py-6 max-[760px]:px-4">
+        <section className="min-w-0 border-r border-zinc-800/90 bg-[#080b0d] px-7 py-6 max-[760px]:pl-4 max-[760px]:pr-8">
           <ModuleHeader
             active={active}
             role={role}
@@ -173,7 +161,7 @@ export function AppShell() {
             role={role}
           />
         </section>
-        <RightPanel active={active} role={role} shellState={shellState} />
+        <RightPanel active={active} role={role} shellState={shellState} selectedIndex={selectedIndex} />
       </div>
     </main>
   );
@@ -210,7 +198,7 @@ function TopBar({
               activeModule === moduleItem.id ? "text-zinc-50" : "hover:text-zinc-200"
             }`}
           >
-            {getModuleLabel(moduleItem)}
+            {getModuleLabel(moduleItem.id)}
             {activeModule === moduleItem.id ? (
               <span className="absolute inset-x-0 bottom-0 h-px bg-zinc-100" />
             ) : null}
@@ -218,21 +206,21 @@ function TopBar({
         ))}
       </nav>
       <div className="flex items-center justify-end gap-3 px-5 text-xs text-zinc-400 max-[760px]:hidden">
-        <button className="grid h-7 w-7 place-items-center rounded-md border border-transparent hover:border-zinc-800 hover:text-zinc-100" title="Search">
+        <button className="grid h-7 w-7 place-items-center rounded-md border border-transparent hover:border-zinc-800 hover:text-zinc-100" title="搜索">
           /
         </button>
-        <button className="grid h-7 w-7 place-items-center rounded-md border border-transparent hover:border-zinc-800 hover:text-zinc-100" title="Notifications">
+        <button className="grid h-7 w-7 place-items-center rounded-md border border-transparent hover:border-zinc-800 hover:text-zinc-100" title="通知">
           !
         </button>
         {user ? (
           <>
-            <button onClick={onLogout} className="hover:text-zinc-100">Logout</button>
+            <button onClick={onLogout} className="hover:text-zinc-100">退出</button>
             <span className="grid h-7 w-7 place-items-center rounded-full bg-zinc-800 text-zinc-100" title={user.email}>
               {user.email?.[0].toUpperCase()}
             </span>
           </>
         ) : (
-          <button onClick={onLogin} className="hover:text-zinc-100">Login</button>
+          <button onClick={onLogin} className="hover:text-zinc-100">登录</button>
         )}
       </div>
     </header>
@@ -248,17 +236,17 @@ function Sidebar({ active, role }: { active: ModuleConfig; role: Role }) {
             <div className="flex items-center justify-between text-sm font-semibold text-zinc-100">
               <span className="flex items-center gap-2">
                 <span className="grid h-5 w-5 place-items-center rounded border border-zinc-700 text-[10px] text-zinc-400">
-                  {getModuleLabel(moduleItem).slice(0, 1)}
+                  {getModuleLabel(moduleItem.id).slice(0, 1)}
                 </span>
-                {getModuleLabel(moduleItem)}
+                {getModuleLabel(moduleItem.id)}
               </span>
-              <span className="text-xs text-zinc-500">{moduleItem.id === "solver" ? "收起" : "Collapse"}</span>
+              <span className="text-xs text-zinc-500">收起</span>
             </div>
             <div className="space-y-1">
               {moduleItem.sidebar.map((item) => {
                 const disabled = item.adminOnly && role !== "admin";
                 const selected = active.id === moduleItem.id && item.label === moduleItem.sidebar[0].label;
-                const itemLabel = getSidebarItemLabel(moduleItem.id, item.label);
+                const displayLabel = getSidebarLabel(moduleItem.id, item.label);
                 return (
                   <button
                     key={item.label}
@@ -269,11 +257,11 @@ function Sidebar({ active, role }: { active: ModuleConfig; role: Role }) {
                         ? "bg-zinc-800/70 text-zinc-50"
                         : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
                     } ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
-                    title={disabled ? "需要管理员角色" : itemLabel}
+                    title={disabled ? "仅管理员可用。前端禁用只是提示，服务端权限仍需校验。" : displayLabel}
                   >
                     <span className="flex min-w-0 items-center gap-2">
                       <span className="h-1.5 w-1.5 rounded-full border border-zinc-600" />
-                      <span className="truncate">{itemLabel}</span>
+                      <span className="truncate">{displayLabel}</span>
                     </span>
                     {item.badge ? (
                       <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-xs text-zinc-300">
@@ -288,8 +276,8 @@ function Sidebar({ active, role }: { active: ModuleConfig; role: Role }) {
         ))}
       </div>
       <div className="flex h-14 items-center justify-between border-t border-zinc-800 px-5 text-sm text-zinc-400">
-        <span>Settings</span>
-        <span>Collapse</span>
+        <span>设置</span>
+        <span>收起</span>
       </div>
     </aside>
   );
@@ -310,31 +298,26 @@ function ModuleHeader({
   onStateChange: (state: ShellState) => void;
   isAuthMode: boolean;
 }) {
-  const isSolver = active.id === "solver";
-  const heading = isSolver ? "AI 解题" : active.title;
-  const eyebrow = isSolver ? "AI 解题 / 新会话" : active.eyebrow;
-  const statusLabel = isSolver ? "等待上传材料" : "Ready for analysis";
-  const metaLabel = isSolver ? "新建会话后上传材料并确认标准答案" : "Created 2 minutes ago";
-  const updatedLabel = isSolver ? "没有标准答案不会生成解析" : "Updated just now";
+  const moduleCopy = getModuleCopy(active);
 
   return (
     <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
       <div className="min-w-0">
-        <p className="mb-3 text-sm text-zinc-500">{eyebrow}</p>
+        <p className="mb-3 text-sm text-zinc-500">{moduleCopy.eyebrow}</p>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-normal text-zinc-50">{heading}</h1>
+          <h1 className="text-2xl font-semibold tracking-normal text-zinc-50">{moduleCopy.title}</h1>
           <span className="flex items-center gap-2 text-sm text-zinc-300">
             <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            {statusLabel}
+            {active.id === "solver" ? "等待上传材料" : "已就绪"}
           </span>
         </div>
-        <p className="mt-2 max-w-2xl text-sm text-zinc-400">
-          {metaLabel} <span className="mx-2 text-zinc-700">.</span> {updatedLabel}
+        <p className="mt-2 max-w-2xl break-words text-sm text-zinc-400 [overflow-wrap:anywhere]">
+          {moduleCopy.description}
         </p>
       </div>
       <div className="flex flex-col items-end gap-3 max-[760px]:items-start">
         <div className="flex flex-col items-end gap-1">
-          {isAuthMode && <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium">{isSolver ? "用户角色" : "Profile Role"}</span>}
+          {isAuthMode && <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-medium">账号角色</span>}
           <div className="flex rounded-md border border-zinc-800 bg-zinc-950 p-1 text-xs">
             {(["student", "admin"] as Role[]).map((option) => (
               <button
@@ -346,11 +329,11 @@ function ModuleHeader({
                   role === option ? "bg-zinc-100 text-zinc-950" : "text-zinc-400 hover:text-zinc-100"
                 } ${isAuthMode ? "cursor-default" : ""}`}
               >
-                {isSolver ? getChineseRole(option) : option}
+                {option === "student" ? "学生" : "管理员"}
               </button>
             ))}
           </div>
-          {!isAuthMode && <span className="text-[10px] text-zinc-500 italic">{isSolver ? "预览模式：可切换角色" : "Preview mode: selector enabled"}</span>}
+          {!isAuthMode && <span className="text-[10px] text-zinc-500 italic">预览模式：可切换角色</span>}
         </div>
         <div className="flex flex-wrap justify-end gap-1 text-xs max-[760px]:justify-start">
           {shellStates.map((state) => (
@@ -364,7 +347,7 @@ function ModuleHeader({
                   : "border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-zinc-100"
               }`}
             >
-              {isSolver ? getChineseShellState(state) : state}
+              {getShellStateLabel(state)}
             </button>
           ))}
         </div>
@@ -386,36 +369,28 @@ function StateSurface({
   onSelectedIndexChange: (index: number) => void;
   role: Role;
 }) {
-  const isSolver = active.id === "solver";
+  const stateCopy = getStateCopy(active.id, shellState);
 
   if (shellState === "loading") {
-    return isSolver
-      ? <Notice title="正在加载解题工作区" body="正在准备 AI Solver 会话状态。" />
-      : <Notice title="Loading workspace" body="Preparing the selected module shell and local placeholder state." />;
+    return <Notice title={stateCopy.title} body={stateCopy.body} />;
   }
 
   if (shellState === "empty") {
-    return isSolver
-      ? <Notice title="暂无解题材料" body="请上传真实题目材料；不会预置或展示假题目内容。" />
-      : <Notice title="No records yet" body="This module has no connected records in the local foundation build." />;
+    return <Notice title={stateCopy.title} body={stateCopy.body} />;
   }
 
   if (shellState === "error") {
-    return isSolver
-      ? <Notice tone="danger" title="解题会话出错" body="请检查上传材料、确认字段和标准答案状态后重试。" />
-      : <Notice tone="danger" title="Preview error" body="The shell can display recoverable module errors without leaving the app frame." />;
+    return <Notice tone="danger" title={stateCopy.title} body={stateCopy.body} />;
   }
 
   if (shellState === "permission") {
-    return isSolver
-      ? <Notice tone="warning" title="权限不足" body="当前角色不能执行该操作；最终权限仍由服务器端校验决定。" />
-      : (
-          <Notice
-            tone="warning"
-            title="Permission denied"
-            body="Admin-only actions are disabled in the student role. Server-side checks and RLS will enforce this in later backend work."
-          />
-        );
+    return (
+      <Notice
+        tone="warning"
+        title={stateCopy.title}
+        body={stateCopy.body}
+      />
+    );
   }
 
   return (
@@ -432,29 +407,36 @@ function StateSurface({
 
 function WorkflowPanel({ active, role, compact = false }: { active: ModuleConfig; role: Role; compact?: boolean }) {
   const restricted = active.id === "bank" && role !== "admin";
-  const isSolver = active.id === "solver";
+  const moduleCopy = getModuleCopy(active);
 
   return (
     <section className={compact ? "" : "rounded-lg border border-zinc-800 bg-zinc-950/55 p-4"}>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-zinc-100">{isSolver ? "会话操作" : compact ? "Foundation Controls" : "Module controls"}</h2>
-        <span className="text-xs text-zinc-500">{isSolver ? "AI Solver 会话边界" : "Issue #1 foundation state"}</span>
+        <h2 className="text-sm font-semibold text-zinc-100">{active.id === "solver" ? "会话操作" : "模块操作"}</h2>
+        <span className="text-xs text-zinc-500">
+          {active.id === "solver" ? "AI 解题器会话边界" : "真实数据接入前仅显示状态与权限边界"}
+        </span>
       </div>
       <div className="grid grid-cols-[1fr_1fr_auto] gap-3 max-[900px]:grid-cols-1">
         <button className="h-10 rounded-md border border-zinc-700 bg-zinc-100 px-3 text-sm font-medium text-zinc-950">
-          {isSolver ? "运行结构化解析" : active.primaryAction}
+          {moduleCopy.primaryAction}
         </button>
         <button className="h-10 rounded-md border border-zinc-800 bg-zinc-950 px-3 text-sm text-zinc-200">
-          {isSolver ? "编辑抽取文本" : active.secondaryAction}
+          {moduleCopy.secondaryAction}
         </button>
         <button
           disabled={restricted}
           className="h-10 rounded-md border border-zinc-800 bg-zinc-950 px-3 text-sm text-zinc-300 disabled:cursor-not-allowed disabled:opacity-40"
-          title={isSolver ? "AI Solver 当前无管理员专属操作" : restricted ? "Admin role required" : "Admin action available"}
+          title={restricted ? "仅管理员可创建、编辑或归档公共题库内容；服务端权限和 RLS 仍必须校验。" : "管理员操作"}
         >
-          {isSolver ? "仅管理员操作" : "Admin-only action"}
+          {active.id === "bank" ? "管理员题库操作" : "管理操作"}
         </button>
       </div>
+      {restricted ? (
+        <p className="mt-3 text-xs text-zinc-500">
+          学生账号不可创建、编辑或删除公共 Problem Bank 内容。这里的禁用只是界面提示，不能替代服务端权限检查。
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -717,7 +699,7 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
           <select
             value={materialRole}
             onChange={(event) => setMaterialRole(event.target.value)}
-            className="h-10 rounded-md border border-zinc-800 bg-[#0b0f12] px-3 text-sm text-zinc-100 outline-none"
+            className="h-10 min-w-0 rounded-md border border-zinc-800 bg-[#0b0f12] px-3 text-sm text-zinc-100 outline-none max-[900px]:w-full"
           >
             <option value="combined">题目与标准答案</option>
             <option value="problem">题目</option>
@@ -728,12 +710,12 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
             multiple
             accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx"
             onChange={(event) => setSelectedFiles(Array.from(event.target.files ?? []))}
-            className="h-10 rounded-md border border-zinc-800 bg-[#0b0f12] px-3 py-2 text-sm text-zinc-300 file:mr-3 file:rounded file:border-0 file:bg-zinc-800 file:px-2 file:py-1 file:text-xs file:text-zinc-100"
+            className="h-10 min-w-0 rounded-md border border-zinc-800 bg-[#0b0f12] px-3 py-2 text-sm text-zinc-300 file:mr-3 file:rounded file:border-0 file:bg-zinc-800 file:px-2 file:py-1 file:text-xs file:text-zinc-100 max-[900px]:w-full"
           />
           <button
             onClick={handleUpload}
             disabled={isBusy}
-            className="h-10 rounded-md border border-zinc-700 bg-zinc-100 px-3 text-sm font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-10 min-w-0 rounded-md border border-zinc-700 bg-zinc-100 px-3 text-sm font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50 max-[900px]:w-full"
           >
             上传
           </button>
@@ -1400,6 +1382,137 @@ function isFollowUpContext(value: unknown): value is FollowUpContext {
   return isRecord(value) && typeof value.type === "string";
 }
 
+function getModuleLabel(moduleId: ModuleId) {
+  const labels: Record<ModuleId, string> = {
+    solver: "AI 解题器",
+    bank: "题库",
+    articles: "文章广场",
+    library: "个人资料库",
+  };
+
+  return labels[moduleId];
+}
+
+function getModuleCopy(active: ModuleConfig) {
+  if (active.id === "solver") {
+    return {
+      title: active.title,
+      description: "上传材料并确认标准答案；否则不会生成解析。",
+      eyebrow: active.eyebrow,
+      primaryAction: active.primaryAction,
+      secondaryAction: active.secondaryAction,
+    };
+  }
+
+  const copy: Record<Exclude<ModuleId, "solver">, {
+    title: string;
+    description: string;
+    eyebrow: string;
+    primaryAction: string;
+    secondaryAction: string;
+  }> = {
+    bank: {
+      title: "题库",
+      description: "浏览管理员维护的公开物理竞赛题目；未接入查询时不展示示例题。",
+      eyebrow: "题库 / 浏览公开题目",
+      primaryAction: "开始 AI 解析",
+      secondaryAction: "打开题目详情",
+    },
+    articles: {
+      title: "文章广场",
+      description: "阅读由个人文档发布而来的公开文章；未接入查询时不展示示例作者或正文。",
+      eyebrow: "文章广场 / 公开文章",
+      primaryAction: "阅读全文",
+      secondaryAction: "在编辑器打开",
+    },
+    library: {
+      title: "个人资料库",
+      description: "管理自己的题目、文档、题单和文件夹；AI Solver sessions 不会自动进入这里。",
+      eyebrow: "个人资料库 / 我的资料",
+      primaryAction: "打开选中项",
+      secondaryAction: "新建文档",
+    },
+  };
+
+  return copy[active.id];
+}
+
+function getSidebarLabel(moduleId: ModuleId, label: string) {
+  const labels: Partial<Record<ModuleId, Record<string, string>>> = {
+    solver: {
+      "New Analysis": "新建解析",
+      Sessions: "解析会话",
+      "Uploaded Materials": "上传材料",
+      Feedback: "解析反馈",
+    },
+    bank: {
+      "Browse Problems": "浏览题目",
+      "By Topic": "按主题",
+      "By Competition": "按竞赛",
+      "My Collections": "我的收藏",
+      "Upload paper": "上传试卷",
+      "Create problem": "创建题目",
+    },
+    articles: {
+      "Latest Articles": "最新文章",
+      "By Topic": "按主题",
+      "By Competition": "按竞赛",
+      "Top Viewed": "阅读最多",
+    },
+    library: {
+      "My Problems": "我的题目",
+      "My Articles": "我的文章",
+      Bookmarks: "书签",
+      Notes: "笔记",
+    },
+  };
+
+  return labels[moduleId]?.[label] ?? label;
+}
+
+function getShellStateLabel(state: ShellState) {
+  return shellStateLabels[state];
+}
+
+function getStateCopy(moduleId: ModuleId, state: ShellState) {
+  if (moduleId === "solver") {
+    const solverCopy: Record<ShellState, { title: string; body: string }> = {
+      ready: { title: "AI 解题器已就绪", body: "请上传真实题目材料，确认题目文本、图示说明和标准答案后再运行解析。" },
+      loading: { title: "正在加载解题工作区", body: "正在准备 AI 解题器会话状态。" },
+      empty: { title: "暂无解题材料", body: "请上传真实题目材料；不会预置或展示假题目内容。" },
+      error: { title: "解题会话出错", body: "请检查上传材料、确认字段和标准答案状态后重试。" },
+      permission: {
+        title: "权限不足",
+        body: "当前角色不能执行该操作；最终权限仍由服务器端校验决定。",
+      },
+    };
+    return solverCopy[state];
+  }
+
+  const moduleName = getModuleLabel(moduleId);
+  const disconnected = moduleEmptyStates[moduleId].title;
+
+  const empty =
+    moduleId === "bank"
+      ? "暂无公开题目"
+      : moduleId === "articles"
+        ? "暂无公开文章"
+        : "暂无个人资料";
+
+  const copy: Record<ShellState, { title: string; body: string }> = {
+    ready: { title: moduleName, body: disconnected },
+    loading: { title: "正在加载", body: `正在读取${moduleName}的真实记录。` },
+    empty: { title: empty, body: `${disconnected}；不会展示本地示例数据。` },
+    error: { title: "加载失败", body: `${moduleName}暂时无法加载，请稍后重试。` },
+    permission: {
+      title: "权限不足",
+      body: "当前角色不能执行该操作。前端禁用只是提示，服务端权限检查和 RLS 仍然必须执行。",
+    },
+  };
+
+  return copy[state];
+}
+
 function ExtractedTextCard({
   title,
   body,
@@ -1450,6 +1563,27 @@ function formatBytes(sizeBytes: number) {
   return `${(sizeBytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+function hasDatabaseIdentity(record: unknown) {
+  return isRecord(record) && (typeof record.id === "string" || typeof record.id === "number");
+}
+
+function getRealProblemRecords() {
+  return problems.filter(hasDatabaseIdentity);
+}
+
+function getRealArticleRecords() {
+  return articles.filter(hasDatabaseIdentity);
+}
+
+function getRealLibraryGroups() {
+  return libraryGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter(hasDatabaseIdentity),
+    }))
+    .filter((group) => group.items.length > 0);
+}
+
 function ProblemTable({
   selectedIndex,
   onSelectedIndexChange,
@@ -1457,17 +1591,18 @@ function ProblemTable({
   selectedIndex: number;
   onSelectedIndexChange: (index: number) => void;
 }) {
-  const selected = problems[selectedIndex] ?? problems[0];
+  const realProblems = getRealProblemRecords();
+  const selected = selectedIndex >= 0 && selectedIndex < realProblems.length ? realProblems[selectedIndex] : undefined;
 
   return (
     <section className="space-y-3">
       <div className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-3">
         <input
           className="h-10 w-full rounded-md border border-zinc-800 bg-[#0b0f12] px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600"
-          placeholder="Search problems by title, topic, keyword, or source..."
+          placeholder="按题目、主题、关键词或来源搜索题库..."
         />
         <div className="mt-3 grid grid-cols-5 gap-2 text-xs max-[980px]:grid-cols-2">
-          {["All years", "All institutions", "All topics", "All types", "All tags"].map((filter) => (
+          {["全部年份", "全部机构", "全部主题", "全部类型", "全部标签"].map((filter) => (
             <button
               key={filter}
               className="h-9 rounded-md border border-zinc-800 bg-[#0b0f12] px-3 text-left text-zinc-300 hover:text-zinc-50"
@@ -1479,50 +1614,58 @@ function ProblemTable({
       </div>
       <div className="rounded-lg border border-zinc-800 bg-zinc-950/55">
         <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3 text-xs text-zinc-500">
-          <span>Showing 1-10 of 1,284 problems</span>
-          <span>Rows per page: 10</span>
+          <span>{realProblems.length > 0 ? `显示 ${realProblems.length} 道公开题目` : "未接入真实题库数据"}</span>
+          <span>每页 10 行</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[880px] text-left text-sm">
             <thead className="text-xs text-zinc-500">
               <tr>
                 <th className="w-10 px-4 py-3 font-medium"> </th>
-                <th className="px-4 py-3 font-medium">Problem</th>
-                <th className="px-4 py-3 font-medium">Source</th>
-                <th className="px-4 py-3 font-medium">Year</th>
-                <th className="px-4 py-3 font-medium">Topics</th>
-                <th className="px-4 py-3 font-medium">Difficulty</th>
-                <th className="px-4 py-3 font-medium">Actions</th>
+                <th className="px-4 py-3 font-medium">题目</th>
+                <th className="px-4 py-3 font-medium">来源</th>
+                <th className="px-4 py-3 font-medium">年份</th>
+                <th className="px-4 py-3 font-medium">主题</th>
+                <th className="px-4 py-3 font-medium">难度</th>
+                <th className="px-4 py-3 font-medium">操作</th>
               </tr>
             </thead>
             <tbody>
-              {problems.map((problem, index) => (
-                <tr
-                  key={problem.title}
-                  onClick={() => onSelectedIndexChange(index)}
-                  className={`cursor-pointer border-t border-zinc-800 ${
-                    selectedIndex === index ? "bg-zinc-800/55" : "hover:bg-zinc-900"
-                  }`}
-                >
-                  <td className="px-4 py-3 text-zinc-500">{index + 1}</td>
-                  <td className="px-4 py-3 text-zinc-100">{problem.title}</td>
-                  <td className="px-4 py-3 text-zinc-400">{problem.source}</td>
-                  <td className="px-4 py-3 text-zinc-400">{problem.year}</td>
-                  <td className="px-4 py-3">
-                    <TagList tags={problem.topics.slice(0, 2)} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <DifficultyBadge difficulty={problem.difficulty} />
-                  </td>
-                  <td className="px-4 py-3 text-xs text-zinc-300">
-                    <div className="flex gap-3">
-                      <button>Open</button>
-                      <button>Analyze</button>
-                      <button>Save</button>
-                    </div>
+              {realProblems.length > 0 ? (
+                realProblems.map((problem, index) => (
+                  <tr
+                    key={problem.title}
+                    onClick={() => onSelectedIndexChange(index)}
+                    className={`cursor-pointer border-t border-zinc-800 ${
+                      selectedIndex === index ? "bg-zinc-800/55" : "hover:bg-zinc-900"
+                    }`}
+                  >
+                    <td className="px-4 py-3 text-zinc-500">{index + 1}</td>
+                    <td className="px-4 py-3 text-zinc-100">{problem.title}</td>
+                    <td className="px-4 py-3 text-zinc-400">{problem.source}</td>
+                    <td className="px-4 py-3 text-zinc-400">{problem.year}</td>
+                    <td className="px-4 py-3">
+                      <TagList tags={problem.topics.slice(0, 2)} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <DifficultyBadge difficulty={problem.difficulty} />
+                    </td>
+                    <td className="px-4 py-3 text-xs text-zinc-300">
+                      <div className="flex gap-3">
+                        <button>打开</button>
+                        <button>解析</button>
+                        <button>保存</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr className="border-t border-zinc-800">
+                  <td className="px-4 py-10 text-center text-sm text-zinc-500" colSpan={7}>
+                    未接入真实题库数据。接入公开题目查询后，这里只显示数据库返回的真实记录。
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
@@ -1530,27 +1673,31 @@ function ProblemTable({
       <div className="grid grid-cols-[minmax(0,1fr)_280px] gap-3 max-[980px]:grid-cols-1">
         <section className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-4">
           <div className="mb-3 flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-zinc-100">Problem Preview</h2>
-            <span className="rounded border border-zinc-700 px-2 py-0.5 text-xs text-zinc-400">Selected</span>
+            <h2 className="text-sm font-semibold text-zinc-100">题目预览</h2>
+            <span className="rounded border border-zinc-700 px-2 py-0.5 text-xs text-zinc-400">
+              {selected ? "已选择" : "等待选择"}
+            </span>
           </div>
-          <p className="max-w-3xl text-sm leading-6 text-zinc-300">
-            A uniform conducting rod of length L and mass m can slide without friction on two parallel horizontal rails
-            separated by distance d. The system is in a uniform magnetic field B directed upward. A constant force F is
-            applied to the rod along the rails.
-          </p>
-          <div className="mt-4 grid grid-cols-2 gap-3 max-[760px]:grid-cols-1">
-            <FileCard title="Standard Answer" fileName="answer_001.pdf" status="PDF / 512 KB" />
-            <FileCard title="Diagram" fileName="diagram_001.png" status="PNG / 84 KB" />
-          </div>
+          {selected ? (
+            <p className="max-w-3xl text-sm leading-6 text-zinc-300">{selected.description}</p>
+          ) : (
+            <p className="max-w-3xl text-sm leading-6 text-zinc-500">
+              暂无公开题目可预览。列表接入真实数据并选择题目后，右侧会显示题面、标准答案状态和关联资料。
+            </p>
+          )}
         </section>
         <section className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-4">
-          <h2 className="mb-3 text-sm font-semibold text-zinc-100">Selected Problem</h2>
-          <div className="space-y-3 text-sm">
-            <Detail label="Title" value={selected.title} />
-            <Detail label="Institution" value={selected.institution} />
-            <Detail label="Type" value={selected.type} />
-            <Detail label="Model tags" value={selected.modelTags.join(", ")} />
-          </div>
+          <h2 className="mb-3 text-sm font-semibold text-zinc-100">已选题目</h2>
+          {selected ? (
+            <div className="space-y-3 text-sm">
+              <Detail label="标题" value={selected.title} />
+              <Detail label="机构" value={selected.institution} />
+              <Detail label="类型" value={selected.type} />
+              <Detail label="模型标签" value={selected.modelTags.join(", ")} />
+            </div>
+          ) : (
+            <p className="text-sm leading-6 text-zinc-500">没有选中题目。</p>
+          )}
         </section>
       </div>
     </section>
@@ -1558,67 +1705,94 @@ function ProblemTable({
 }
 
 function ArticleReader() {
-  const selectedArticle = articles[0];
+  const realArticles = getRealArticleRecords();
+  const [selectedArticleIndex, setSelectedArticleIndex] = useState(-1);
+  const selectedArticle =
+    selectedArticleIndex >= 0 && selectedArticleIndex < realArticles.length
+      ? realArticles[selectedArticleIndex]
+      : undefined;
 
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <input
           className="h-10 min-w-[280px] flex-1 rounded-md border border-zinc-800 bg-[#0b0f12] px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600"
-          placeholder="Search articles by title, author, topic, or model..."
+          placeholder="按标题、作者、主题或模型搜索文章..."
         />
         <button className="h-10 rounded-md border border-zinc-700 bg-zinc-100 px-3 text-sm font-medium text-zinc-950">
-          Write Article
+          写文章
         </button>
       </div>
       <div className="grid grid-cols-[280px_minmax(0,1fr)] rounded-lg border border-zinc-800 bg-zinc-950/55 max-[900px]:grid-cols-1">
         <div className="border-r border-zinc-800 max-[900px]:border-r-0 max-[900px]:border-b">
-          <p className="border-b border-zinc-800 p-4 text-xs text-zinc-500">252 articles</p>
-          {articles.map((article, index) => (
-            <button
-              key={article.title}
-              className={`block w-full border-b border-zinc-800 p-4 text-left ${
-                index === 0 ? "bg-zinc-800/55" : "hover:bg-zinc-900"
-              }`}
-            >
-              <span className="block text-sm font-semibold text-zinc-100">{article.title}</span>
-              <span className="mt-1 block text-xs text-zinc-500">
-                {article.author} / {article.updated}
-              </span>
-              <span className="mt-3 block">
-                <TagList tags={article.tags.slice(0, 2)} />
-              </span>
-            </button>
-          ))}
+          <p className="border-b border-zinc-800 p-4 text-xs text-zinc-500">
+            {realArticles.length > 0 ? `${realArticles.length} 篇公开文章` : "未接入公开文章数据"}
+          </p>
+          {realArticles.length > 0 ? (
+            realArticles.map((article, index) => (
+              <button
+                key={article.title}
+                onClick={() => setSelectedArticleIndex(index)}
+                className={`block w-full border-b border-zinc-800 p-4 text-left ${
+                  selectedArticleIndex === index ? "bg-zinc-800/55" : "hover:bg-zinc-900"
+                }`}
+              >
+                <span className="block text-sm font-semibold text-zinc-100">{article.title}</span>
+                <span className="mt-1 block text-xs text-zinc-500">
+                  {article.author} / {article.updated}
+                </span>
+                <span className="mt-3 block">
+                  <TagList tags={article.tags.slice(0, 2)} />
+                </span>
+              </button>
+            ))
+          ) : (
+            <div className="p-4 text-sm leading-6 text-zinc-500">
+              暂无公开文章。公开文章列表接入数据库后才会显示作者、正文和关联题目。
+            </div>
+          )}
         </div>
         <article className="space-y-5 p-6">
-          <p className="text-xs text-zinc-500">Public Article / {selectedArticle.updated} / {selectedArticle.readTime}</p>
-          <h2 className="max-w-2xl text-2xl font-semibold text-zinc-50">{selectedArticle.title}</h2>
-          <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-400">
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-zinc-800 text-xs text-zinc-200">AT</span>
-            <span>{selectedArticle.author}</span>
-          </div>
-          <TagList tags={selectedArticle.tags} />
-          <p className="max-w-3xl border-t border-zinc-800 pt-5 leading-7 text-zinc-300">{selectedArticle.excerpt}</p>
-          <p className="max-w-3xl leading-7 text-zinc-300">
-            Consider a conducting rod of length L moving with speed v on two frictionless rails separated by distance d
-            in a uniform magnetic field B. The current direction is derived from the change in flux and then checked
-            against the magnetic force on the rod.
-          </p>
-          <div className="rounded-lg border border-zinc-800 bg-[#0b0f12] p-4">
-            <div className="mb-3 text-xs text-zinc-500">Related Problems (real linked records)</div>
-            <div className="space-y-2">
-              {selectedArticle.relatedProblems.map((title) => (
-                <div key={title} className="flex items-center justify-between rounded-md border border-zinc-800 p-3">
-                  <div>
-                    <p className="text-sm font-medium text-zinc-100">{title}</p>
-                    <p className="text-xs text-zinc-500">Problem Bank record</p>
+          {selectedArticle ? (
+            <>
+              <p className="text-xs text-zinc-500">公开文章 / {selectedArticle.updated} / {selectedArticle.readTime}</p>
+              <h2 className="max-w-2xl text-2xl font-semibold text-zinc-50">{selectedArticle.title}</h2>
+              <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-400">
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-zinc-800 text-xs text-zinc-200">文</span>
+                <span>{selectedArticle.author}</span>
+              </div>
+              <TagList tags={selectedArticle.tags} />
+              <p className="max-w-3xl border-t border-zinc-800 pt-5 leading-7 text-zinc-300">{selectedArticle.excerpt}</p>
+              <div className="rounded-lg border border-zinc-800 bg-[#0b0f12] p-4">
+                <div className="mb-3 text-xs text-zinc-500">关联题目</div>
+                {selectedArticle.relatedProblems.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedArticle.relatedProblems.map((title) => (
+                      <div key={title} className="flex items-center justify-between rounded-md border border-zinc-800 p-3">
+                        <div>
+                          <p className="text-sm font-medium text-zinc-100">{title}</p>
+                          <p className="text-xs text-zinc-500">真实题库关联记录</p>
+                        </div>
+                        <button className="text-xs text-zinc-300">打开题目</button>
+                      </div>
+                    ))}
                   </div>
-                  <button className="text-xs text-zinc-300">Open Problem</button>
-                </div>
-              ))}
-            </div>
-          </div>
+                ) : (
+                  <p className="text-sm text-zinc-500">暂无真实关联题目。</p>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-zinc-500">Article Plaza / 阅读区</p>
+              <h2 className="max-w-2xl text-2xl font-semibold text-zinc-50">未选择文章</h2>
+              <p className="max-w-3xl border-t border-zinc-800 pt-5 leading-7 text-zinc-500">
+                {realArticles.length > 0
+                  ? "请从左侧选择一篇真实公开文章。"
+                  : "未接入公开文章数据。这里不会展示示例作者、示例正文或编造的关联题目；接入真实 public document 查询后再渲染文章内容。"}
+              </p>
+            </>
+          )}
         </article>
       </div>
     </section>
@@ -1626,11 +1800,14 @@ function ArticleReader() {
 }
 
 function LibraryTable() {
+  const realLibraryGroups = getRealLibraryGroups();
+  const totalItems = realLibraryGroups.reduce((sum, group) => sum + group.items.length, 0);
+
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          {["New Folder", "New Problem Set", "New Document"].map((action) => (
+          {["新建文件夹", "新建题单", "新建文档"].map((action) => (
             <button
               key={action}
               className="h-9 rounded-md border border-zinc-800 bg-[#0b0f12] px-3 text-sm text-zinc-200 hover:text-zinc-50"
@@ -1641,12 +1818,12 @@ function LibraryTable() {
         </div>
         <input
           className="h-9 w-[260px] rounded-md border border-zinc-800 bg-[#0b0f12] px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 max-[760px]:w-full"
-          placeholder="Search library..."
+          placeholder="搜索个人资料库..."
         />
       </div>
       <div className="rounded-lg border border-zinc-800 bg-zinc-950/55">
         <div className="flex flex-wrap items-center gap-2 border-b border-zinc-800 p-3">
-        {["Saved Problems", "My Documents", "Problem Sets", "Folders"].map((tab, index) => (
+        {["已保存题目", "我的文档", "题单", "文件夹"].map((tab, index) => (
           <button
             key={tab}
             className={`rounded-md px-3 py-2 text-sm ${
@@ -1662,47 +1839,52 @@ function LibraryTable() {
             <thead className="text-xs text-zinc-500">
               <tr>
                 <th className="w-10 px-4 py-3 font-medium"> </th>
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Type</th>
-                <th className="px-4 py-3 font-medium">Updated</th>
-                <th className="px-4 py-3 font-medium">Tags</th>
-                <th className="px-4 py-3 font-medium">In Folder / Set</th>
-                <th className="px-4 py-3 font-medium">Visibility</th>
+                <th className="px-4 py-3 font-medium">名称</th>
+                <th className="px-4 py-3 font-medium">类型</th>
+                <th className="px-4 py-3 font-medium">更新时间</th>
+                <th className="px-4 py-3 font-medium">标签</th>
+                <th className="px-4 py-3 font-medium">所在文件夹 / 题单</th>
+                <th className="px-4 py-3 font-medium">可见性</th>
               </tr>
             </thead>
             <tbody>
-              {libraryGroups.map((group) => (
-                <Fragment key={group.label}>
-                  <tr className="border-t border-zinc-800 bg-[#0b0f12] text-xs text-zinc-400">
-                    <td className="px-4 py-3">-</td>
-                    <td className="px-4 py-3 font-medium" colSpan={6}>
-                      {group.label}
-                    </td>
-                  </tr>
-                  {group.items.map((item, index) => (
-                    <tr
-                      key={item.name}
-                      className={`border-t border-zinc-800 ${group.label.startsWith("Documents") && index === 0 ? "bg-zinc-800/55" : ""}`}
-                    >
-                      <td className="px-4 py-3 text-zinc-500">{group.label.startsWith("Documents") && index === 0 ? "x" : ""}</td>
-                      <td className="px-4 py-3 text-zinc-100">{item.name}</td>
-                      <td className="px-4 py-3 text-zinc-400">{item.type}</td>
-                      <td className="px-4 py-3 text-zinc-400">{item.updated}</td>
-                      <td className="px-4 py-3">
-                        {item.tag === "-" ? <span className="text-zinc-600">-</span> : <TagList tags={[item.tag]} />}
+              {realLibraryGroups.length > 0 ? (
+                realLibraryGroups.map((group) => (
+                  <Fragment key={group.label}>
+                    <tr className="border-t border-zinc-800 bg-[#0b0f12] text-xs text-zinc-400">
+                      <td className="px-4 py-3">-</td>
+                      <td className="px-4 py-3 font-medium" colSpan={6}>
+                        {group.label}
                       </td>
-                      <td className="px-4 py-3 text-zinc-400">{item.folder}</td>
-                      <td className="px-4 py-3 text-zinc-400">{item.visibility}</td>
                     </tr>
-                  ))}
-                </Fragment>
-              ))}
+                    {group.items.map((item) => (
+                      <tr key={item.name} className="border-t border-zinc-800">
+                        <td className="px-4 py-3 text-zinc-500" />
+                        <td className="px-4 py-3 text-zinc-100">{item.name}</td>
+                        <td className="px-4 py-3 text-zinc-400">{item.type}</td>
+                        <td className="px-4 py-3 text-zinc-400">{item.updated}</td>
+                        <td className="px-4 py-3">
+                          {item.tag === "-" ? <span className="text-zinc-600">-</span> : <TagList tags={[item.tag]} />}
+                        </td>
+                        <td className="px-4 py-3 text-zinc-400">{item.folder}</td>
+                        <td className="px-4 py-3 text-zinc-400">{item.visibility}</td>
+                      </tr>
+                    ))}
+                  </Fragment>
+                ))
+              ) : (
+                <tr className="border-t border-zinc-800">
+                  <td className="px-4 py-10 text-center text-sm text-zinc-500" colSpan={7}>
+                    暂无个人资料。未接入个人资料库数据前，不展示示例文件夹、题单或文档。
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
         <div className="flex items-center justify-between border-t border-zinc-800 px-4 py-3 text-xs text-zinc-500">
-          <span>Showing 13 items</span>
-          <span>1 selected</span>
+          <span>{totalItems > 0 ? `显示 ${totalItems} 项` : "未接入个人资料库数据"}</span>
+          <span>未选择</span>
         </div>
       </div>
     </section>
@@ -1713,38 +1895,40 @@ function RightPanel({
   active,
   role,
   shellState,
+  selectedIndex,
 }: {
   active: ModuleConfig;
   role: Role;
   shellState: ShellState;
+  selectedIndex: number;
 }) {
-  const firstProblem = problems[0];
-  const firstArticle = articles[0];
+  const selectedProblem = selectedIndex >= 0 ? getRealProblemRecords()[selectedIndex] : undefined;
 
   const title =
-    active.id === "articles" ? "Article Info" : active.id === "library" ? "Item Details" : active.id === "bank" ? "Selected Problem" : "会话信息";
+    active.id === "articles" ? "文章信息" : active.id === "library" ? "资料详情" : active.id === "bank" ? "已选题目" : "会话信息";
   const primaryDetails =
     active.id === "articles"
       ? [
-          ["Author", firstArticle.author],
-          ["Status", "Published"],
-          ["Related problems", `${firstArticle.relatedProblems.length} linked records`],
-          ["Topic tags", firstArticle.tags.join(", ")],
+          ["状态", "未选择文章"],
+          ["数据", getRealArticleRecords().length > 0 ? "等待选择真实文章" : "未接入公开文章数据"],
         ]
       : active.id === "library"
         ? [
-            ["Type", "Document"],
-            ["Visibility", "Private"],
-            ["Updated", "2026-05-25 09:28"],
-            ["In folder", "Electromagnetism"],
+            ["状态", "未选择资料"],
+            ["数据", getRealLibraryGroups().length > 0 ? "等待选择个人资料" : "未接入个人资料库数据"],
           ]
         : active.id === "bank"
-          ? [
-              ["Source", `${firstProblem.source}, ${firstProblem.type}`],
-              ["Institution", firstProblem.institution],
-              ["Topic", firstProblem.topics.join(", ")],
-              ["Model tags", firstProblem.modelTags.join(", ")],
-            ]
+          ? selectedProblem
+            ? [
+                ["来源", `${selectedProblem.source}, ${selectedProblem.type}`],
+                ["机构", selectedProblem.institution],
+                ["主题", selectedProblem.topics.join(", ")],
+                ["模型标签", selectedProblem.modelTags.join(", ")],
+              ]
+            : [
+                ["状态", "未选择题目"],
+                ["数据", getRealProblemRecords().length > 0 ? "等待选择真实题目" : "未接入真实题库数据"],
+              ]
           : [
               ["材料状态", "等待真实上传"],
               ["文本抽取", "真实抽取未接入"],
@@ -1754,12 +1938,14 @@ function RightPanel({
 
   const actions =
     active.id === "articles"
-      ? ["Read full article", "Save to library", "Open in editor", "Export PDF"]
+      ? ["阅读全文", "保存到资料库", "在编辑器打开", "导出 PDF"]
       : active.id === "library"
-        ? ["Open", "Edit", "Publish", "Move to folder"]
+        ? ["打开", "编辑", "发布", "移动到文件夹"]
         : active.id === "bank"
-          ? ["Open full detail", "Start AI analysis", "Add to my library", "Report an issue"]
+          ? ["打开详情", "开始 AI 解析", "加入个人资料库", "报告问题"]
           : ["保存会话", "创建文章草稿", "加入个人资料库", "导出解析（PDF）", "分享会话"];
+  const isNonSolverEmpty =
+    (active.id === "bank" && !selectedProblem) || active.id === "articles" || active.id === "library";
 
   return (
     <aside className="space-y-4 bg-[#090d10] p-4 max-[1180px]:hidden">
@@ -1769,39 +1955,45 @@ function RightPanel({
           {primaryDetails.map(([label, value]) => (
             <Detail key={label} label={label} value={value} />
           ))}
-          <Detail label={active.id === "solver" ? "角色预览" : "Role preview"} value={active.id === "solver" ? getChineseRole(role) : role} />
+          <Detail label="角色预览" value={getChineseRole(role)} />
         </div>
       </section>
       <section className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-4">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-zinc-100">{active.id === "solver" ? "会话笔记" : "Session Notes"}</h2>
-          <button className="text-xs text-zinc-400 hover:text-zinc-100">{active.id === "solver" ? "编辑" : "Edit"}</button>
+          <h2 className="text-sm font-semibold text-zinc-100">{active.id === "solver" ? "会话笔记" : "备注"}</h2>
+          <button className="text-xs text-zinc-400 hover:text-zinc-100">编辑</button>
         </div>
         <textarea
           className="h-[106px] w-full resize-none rounded-md border border-zinc-800 bg-[#0b0f12] p-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600"
-          placeholder={active.id === "solver" ? "记录本次解题笔记..." : "Add your notes for this session..."}
+          placeholder={active.id === "solver" ? "记录本次解题笔记..." : "为选中的真实记录添加备注..."}
         />
       </section>
       <section className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-4">
-        <h2 className="mb-4 text-sm font-semibold text-zinc-100">{active.id === "solver" ? "操作" : "Actions"}</h2>
+        <h2 className="mb-4 text-sm font-semibold text-zinc-100">操作</h2>
         <div className="space-y-2">
           {actions.map((action) => (
             <button
               key={action}
-              className="h-9 w-full rounded-md border border-zinc-800 bg-[#0b0f12] px-3 text-left text-sm text-zinc-300 hover:text-zinc-100"
+              disabled={isNonSolverEmpty}
+              className="h-9 w-full rounded-md border border-zinc-800 bg-[#0b0f12] px-3 text-left text-sm text-zinc-300 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+              title={isNonSolverEmpty ? "请先选择真实记录。" : action}
             >
               {action}
             </button>
           ))}
-          <button className="h-9 w-full rounded-md border border-red-950/80 bg-[#0b0f12] px-3 text-left text-sm text-red-400">
-            {active.id === "library" ? "Delete" : active.id === "articles" ? "Unpublish article" : active.id === "bank" ? "Admin edit disabled" : "删除草稿"}
+          <button
+            disabled={active.id !== "solver"}
+            className="h-9 w-full rounded-md border border-red-950/80 bg-[#0b0f12] px-3 text-left text-sm text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
+            title={active.id === "bank" && role !== "admin" ? "学生不能编辑或删除公共题库内容；服务端仍需校验权限。" : undefined}
+          >
+            {active.id === "library" ? "删除" : active.id === "articles" ? "取消发布文章" : active.id === "bank" ? "管理员编辑已禁用" : "删除草稿"}
           </button>
         </div>
       </section>
       <p className="px-1 text-xs leading-5 text-zinc-500">
         {active.id === "solver"
           ? "AI Solver 的标准答案门禁和上传校验由服务器执行；文本抽取、持久化接线和后续能力按阶段接入。"
-          : "Foundation build. AI Solver gates and upload validation are server-side; extraction, persistence wiring, and provider calls remain staged."}
+          : "前端禁用只是可用性提示。公共题库写操作、个人资料归属和公开文章权限必须由服务端检查并配合 RLS 执行。"}
       </p>
     </aside>
   );
@@ -1858,7 +2050,7 @@ function Notice({
   return (
     <section className={`rounded-lg border bg-zinc-950/55 p-8 ${toneClass}`}>
       <h2 className="text-xl font-semibold">{title}</h2>
-      <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-400">{body}</p>
+      <p className="mt-3 max-w-xl break-words text-sm leading-6 text-zinc-400 [overflow-wrap:anywhere]">{body}</p>
     </section>
   );
 }
