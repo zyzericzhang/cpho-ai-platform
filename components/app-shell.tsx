@@ -144,7 +144,7 @@ export function AppShell() {
       />
       <div className="grid min-h-[calc(100vh-54px)] grid-cols-[246px_minmax(0,1fr)_300px] max-[1180px]:grid-cols-[220px_minmax(0,1fr)] max-[760px]:grid-cols-1">
         <Sidebar active={active} role={role} />
-        <section className="min-w-0 border-r border-zinc-800/90 bg-[#080b0d] px-7 py-6 max-[760px]:px-4">
+        <section className="min-w-0 border-r border-zinc-800/90 bg-[#080b0d] px-7 py-6 max-[760px]:pl-4 max-[760px]:pr-8">
           <ModuleHeader
             active={active}
             role={role}
@@ -311,7 +311,7 @@ function ModuleHeader({
             {active.id === "solver" ? "等待上传材料" : "已就绪"}
           </span>
         </div>
-        <p className="mt-2 max-w-2xl text-sm text-zinc-400">
+        <p className="mt-2 max-w-2xl break-words text-sm text-zinc-400 [overflow-wrap:anywhere]">
           {moduleCopy.description}
         </p>
       </div>
@@ -699,7 +699,7 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
           <select
             value={materialRole}
             onChange={(event) => setMaterialRole(event.target.value)}
-            className="h-10 rounded-md border border-zinc-800 bg-[#0b0f12] px-3 text-sm text-zinc-100 outline-none"
+            className="h-10 min-w-0 rounded-md border border-zinc-800 bg-[#0b0f12] px-3 text-sm text-zinc-100 outline-none max-[900px]:w-full"
           >
             <option value="combined">题目与标准答案</option>
             <option value="problem">题目</option>
@@ -710,12 +710,12 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
             multiple
             accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx"
             onChange={(event) => setSelectedFiles(Array.from(event.target.files ?? []))}
-            className="h-10 rounded-md border border-zinc-800 bg-[#0b0f12] px-3 py-2 text-sm text-zinc-300 file:mr-3 file:rounded file:border-0 file:bg-zinc-800 file:px-2 file:py-1 file:text-xs file:text-zinc-100"
+            className="h-10 min-w-0 rounded-md border border-zinc-800 bg-[#0b0f12] px-3 py-2 text-sm text-zinc-300 file:mr-3 file:rounded file:border-0 file:bg-zinc-800 file:px-2 file:py-1 file:text-xs file:text-zinc-100 max-[900px]:w-full"
           />
           <button
             onClick={handleUpload}
             disabled={isBusy}
-            className="h-10 rounded-md border border-zinc-700 bg-zinc-100 px-3 text-sm font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-10 min-w-0 rounded-md border border-zinc-700 bg-zinc-100 px-3 text-sm font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50 max-[900px]:w-full"
           >
             上传
           </button>
@@ -1397,7 +1397,7 @@ function getModuleCopy(active: ModuleConfig) {
   if (active.id === "solver") {
     return {
       title: active.title,
-      description: "新建会话后上传材料并确认标准答案；没有标准答案不会生成解析。",
+      description: "上传材料并确认标准答案；否则不会生成解析。",
       eyebrow: active.eyebrow,
       primaryAction: active.primaryAction,
       secondaryAction: active.secondaryAction,
@@ -2050,7 +2050,7 @@ function Notice({
   return (
     <section className={`rounded-lg border bg-zinc-950/55 p-8 ${toneClass}`}>
       <h2 className="text-xl font-semibold">{title}</h2>
-      <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-400">{body}</p>
+      <p className="mt-3 max-w-xl break-words text-sm leading-6 text-zinc-400 [overflow-wrap:anywhere]">{body}</p>
     </section>
   );
 }
