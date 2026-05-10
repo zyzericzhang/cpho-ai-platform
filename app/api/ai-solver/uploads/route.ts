@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { toProviderImageDataUrl } from "@/lib/ai-solver/image-context";
 import { addUploadedMaterial, getStorageBucket } from "@/lib/ai-solver/local-store";
 import { getRequestUserId } from "@/lib/ai-solver/request-auth";
 import { parseMaterialRole, validateUploadBatch } from "@/lib/ai-solver/upload-validation";
@@ -16,15 +17,21 @@ export async function POST(request: NextRequest) {
     }
 
     const validated = validateUploadBatch(files);
-    const uploads = validated.map((file) =>
-      addUploadedMaterial({
-        sessionId,
-        userId,
-        role,
-        kind: file.kind,
-        fileName: file.name,
-        mimeType: file.type,
-        sizeBytes: file.size,
+    const uploads = await Promise.all(
+      validated.map(async (validatedFile, index) => {
+        const file = files[index];
+        const imageDataUrl = await toProviderImageDataUrl(file, validatedFile);
+
+        return addUploadedMaterial({
+          sessionId,
+          userId,
+          role,
+          kind: validatedFile.kind,
+          fileName: validatedFile.name,
+          mimeType: validatedFile.type,
+          sizeBytes: validatedFile.size,
+          imageDataUrl,
+        });
       }),
     );
 

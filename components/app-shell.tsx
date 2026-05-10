@@ -3,7 +3,6 @@
 import { type User } from "@supabase/supabase-js";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import {
-  analysisSections,
   articles,
   libraryGroups,
   modules,
@@ -16,6 +15,50 @@ import {
 import { createClient } from "@/lib/supabase/client";
 
 const shellStates: ShellState[] = ["ready", "loading", "empty", "error", "permission"];
+
+type AnalysisSectionKey =
+  | "step_by_step_derivation"
+  | "physical_reasoning_reconstruction"
+  | "related_models_similar_problems"
+  | "related_articles"
+  | "key_handling"
+  | "write_article"
+  | "add_to_personal_library";
+
+type FollowUpContext =
+  | { type: "whole_analysis" }
+  | { type: "section"; sectionKey: AnalysisSectionKey }
+  | { type: "selected_text"; selection: { sectionKey: AnalysisSectionKey; text: string; startOffset: number; endOffset: number } }
+  | { type: "follow_up"; parentMessageId: string };
+
+type FollowUpMessage = {
+  id: string;
+  parentMessageId?: string | null;
+  role: "user" | "assistant";
+  content: string;
+  context?: FollowUpContext;
+  createdAt?: string;
+};
+
+type AnalysisPayload = {
+  sections?: Partial<Record<AnalysisSectionKey, unknown>>;
+  retrieval_status?: Partial<Record<"similar_problems" | "related_articles", string>>;
+  warnings?: string[];
+  provider?: {
+    configured?: boolean;
+    ran?: boolean;
+  };
+};
+
+const fixedAnalysisSections: Array<{ key: AnalysisSectionKey; label: string }> = [
+  { key: "step_by_step_derivation", label: "Step-by-step derivation" },
+  { key: "physical_reasoning_reconstruction", label: "Physical reasoning reconstruction" },
+  { key: "related_models_similar_problems", label: "Related models / similar problems" },
+  { key: "related_articles", label: "Related articles" },
+  { key: "key_handling", label: "Key handling" },
+  { key: "write_article", label: "Write article" },
+  { key: "add_to_personal_library", label: "Add to personal library" },
+];
 
 export function AppShell() {
   const [activeModule, setActiveModule] = useState<ModuleId>("solver");
@@ -386,8 +429,17 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
   const [standardAnswer, setStandardAnswer] = useState("");
   const [confirmStandardAnswer, setConfirmStandardAnswer] = useState(false);
   const [statusMessage, setStatusMessage] = useState("Create a session, upload material, then confirm the extracted fields.");
-  const [gateMessage, setGateMessage] = useState("No standard answer, no AI solution.");
+  const [analysisMessage, setAnalysisMessage] = useState("No standard answer, no AI solution.");
+  const [analysis, setAnalysis] = useState<AnalysisPayload | null>(null);
+  const [selectedContext, setSelectedContext] = useState<FollowUpContext>({ type: "whole_analysis" });
+  const [selectionDraft, setSelectionDraft] = useState<Extract<FollowUpContext, { type: "selected_text" }> | null>(null);
+  const [messages, setMessages] = useState<FollowUpMessage[]>([]);
+  const [question, setQuestion] = useState("");
+  const [isFollowUpBusy, setIsFollowUpBusy] = useState(false);
+  const [followUpMessage, setFollowUpMessage] = useState("Follow-ups attach to this analysis and do not overwrite it.");
   const [isBusy, setIsBusy] = useState(false);
+
+  const hasConfirmedAnswer = confirmStandardAnswer && standardAnswer.trim().length > 0;
 
   const createSessionIfNeeded = async () => {
     if (sessionId) {
@@ -407,6 +459,23 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
 
     setSessionId(payload.session.id);
     return payload.session.id as string;
+  };
+
+  const loadFollowUps = async (nextSessionId: string) => {
+    try {
+      const response = await fetch(`/api/ai-solver/follow-ups?sessionId=${encodeURIComponent(nextSessionId)}`);
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setFollowUpMessage(payload.error ?? "Follow-up history is not connected yet.");
+        return;
+      }
+
+      setMessages(normalizeFollowUpMessages(payload.messages));
+      setFollowUpMessage("Follow-up history loaded.");
+    } catch {
+      setFollowUpMessage("Follow-up history is not connected yet.");
+    }
   };
 
   const handleUpload = async () => {
@@ -474,11 +543,34 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
     }
   };
 
-  const handleAnalyzeGate = async () => {
+  const handleAnalyze = async () => {
     setIsBusy(true);
+    setAnalysisMessage("Saving confirmation before analysis...");
 
     try {
       const nextSessionId = await createSessionIfNeeded();
+      const confirmResponse = await fetch("/api/ai-solver/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: nextSessionId,
+          problemText,
+          diagramNotes,
+          standardAnswer,
+          confirmStandardAnswer,
+        }),
+      });
+      const confirmPayload = await confirmResponse.json();
+
+      if (!confirmResponse.ok) {
+        throw new Error(confirmPayload.error ?? "Confirmation failed.");
+      }
+
+      if (!confirmPayload.extraction?.isStandardAnswerConfirmed) {
+        throw new Error("Confirm a non-empty standard answer before running analysis.");
+      }
+
+      setStatusMessage("Standard answer confirmed. Running structured analysis...");
       const response = await fetch("/api/ai-solver/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -487,16 +579,87 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
       const payload = await response.json();
 
       if (!response.ok) {
-        throw new Error(payload.error ?? "Analysis gate rejected.");
+        throw new Error(payload.error ?? "Analysis rejected.");
       }
 
-      setGateMessage(
-        `Gate passed. Server-side provider configuration: ${payload.provider.configured ? "ready" : "not configured"}.`,
-      );
+      if (!payload.analysis?.sections) {
+        setAnalysis(null);
+        setAnalysisMessage("Analysis endpoint responded, but no structured analysis was returned yet.");
+        return;
+      }
+
+      setAnalysis(payload.analysis);
+      setAnalysisMessage(buildAnalysisStatus(payload.analysis));
+      void loadFollowUps(nextSessionId);
     } catch (error) {
-      setGateMessage(error instanceof Error ? error.message : "Analysis gate rejected.");
+      setAnalysisMessage(error instanceof Error ? error.message : "Analysis failed.");
     } finally {
       setIsBusy(false);
+    }
+  };
+
+  const handleSectionSelection = (sectionKey: AnalysisSectionKey, sectionText: string) => {
+    const selectedText = window.getSelection()?.toString().trim() ?? "";
+
+    if (!selectedText) {
+      return;
+    }
+
+    const startOffset = Math.max(0, sectionText.indexOf(selectedText));
+    const endOffset = startOffset + selectedText.length;
+    setSelectionDraft({
+      type: "selected_text",
+      selection: {
+        sectionKey,
+        text: selectedText,
+        startOffset,
+        endOffset,
+      },
+    });
+  };
+
+  const handleAskFollowUp = async (overrideContext?: FollowUpContext, overrideQuestion?: string) => {
+    const nextQuestion = (overrideQuestion ?? question).trim();
+    const context = overrideContext ?? selectedContext;
+
+    if (!nextQuestion) {
+      setFollowUpMessage("Enter a follow-up question first.");
+      return;
+    }
+
+    setIsFollowUpBusy(true);
+    setFollowUpMessage("Sending follow-up...");
+
+    try {
+      const nextSessionId = await createSessionIfNeeded();
+      const response = await fetch("/api/ai-solver/follow-ups", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: nextSessionId,
+          parentMessageId: context.type === "follow_up" ? context.parentMessageId : undefined,
+          context,
+          prompt: nextQuestion,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Follow-up failed.");
+      }
+
+      const nextMessages = normalizeFollowUpMessages(
+        payload.messages ?? [payload.userMessage, payload.assistantMessage].filter(Boolean),
+      );
+      setMessages((current) => mergeFollowUpMessages(current, nextMessages));
+      setQuestion("");
+      setSelectionDraft(null);
+      setSelectedContext({ type: "whole_analysis" });
+      setFollowUpMessage("Follow-up added to this analysis.");
+    } catch (error) {
+      setFollowUpMessage(error instanceof Error ? error.message : "Follow-up failed.");
+    } finally {
+      setIsFollowUpBusy(false);
     }
   };
 
@@ -594,43 +757,497 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
         </div>
       </section>
       <section className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold">3. AI Analysis</h2>
-          <span className="text-xs text-zinc-400">{active.primaryAction}</span>
-        </div>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-zinc-800 bg-[#0b0f12] p-3">
-          <p className="text-sm text-zinc-300">{gateMessage}</p>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold">3. AI Analysis</h2>
+            <p className="mt-1 text-xs text-zinc-500">Seven fixed sections with attached follow-up threads</p>
+          </div>
           <button
-            onClick={handleAnalyzeGate}
-            disabled={isBusy}
+            onClick={handleAnalyze}
+            disabled={isBusy || !hasConfirmedAnswer}
             className="h-9 rounded-md border border-zinc-700 bg-zinc-100 px-3 text-sm font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50"
+            title={!hasConfirmedAnswer ? "Confirm a non-empty standard answer first" : active.primaryAction}
           >
-            Check server gate
+            {isBusy ? "Running..." : "Run structured analysis"}
           </button>
         </div>
-        <div className="space-y-1">
-          {analysisSections.map((section) => (
-            <details key={section} className="rounded border border-zinc-800 bg-[#0b0f12] px-3 py-2">
-              <summary className="cursor-pointer text-sm text-zinc-200">{section}</summary>
-              <p className="mt-2 text-sm text-zinc-400">
-                {section.includes("similar") || section.includes("articles")
-                  ? "Retrieval is not connected in this foundation build, so no model-invented records are shown."
-                  : "Structured output placeholder reserved for later AI Solver implementation."}
-              </p>
-            </details>
-          ))}
+        <div className="mb-3 rounded-md border border-zinc-800 bg-[#0b0f12] p-3">
+          <p className="text-sm text-zinc-300">{analysisMessage}</p>
+          {analysis?.warnings?.length ? (
+            <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-amber-200">
+              {analysis.warnings.map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+        <div className="grid grid-cols-[minmax(0,1fr)_320px] gap-3 max-[1100px]:grid-cols-1">
+          <div className="space-y-1">
+            {fixedAnalysisSections.map((section) => (
+              <AnalysisSectionPanel
+                key={section.key}
+                sectionKey={section.key}
+                label={section.label}
+                value={analysis?.sections?.[section.key]}
+                retrievalStatus={analysis?.retrieval_status}
+                onAskSection={() => {
+                  setSelectedContext({ type: "section", sectionKey: section.key });
+                  setQuestion(`Explain the "${section.label}" section in more detail.`);
+                }}
+                onSelectText={(sectionText) => handleSectionSelection(section.key, sectionText)}
+              />
+            ))}
+          </div>
+          <section className="min-w-0 rounded-md border border-zinc-800 bg-[#0b0f12] p-3">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-zinc-100">Follow-up thread</h3>
+              <span className="rounded border border-zinc-800 px-2 py-0.5 text-xs text-zinc-500">
+                {messages.length} messages
+              </span>
+            </div>
+            {selectionDraft ? (
+              <div className="mb-3 rounded-md border border-zinc-700 bg-zinc-950 p-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium text-zinc-200">Selected text</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedContext(selectionDraft);
+                      setQuestion("Can you explain this selected part?");
+                    }}
+                    className="h-7 rounded-md border border-zinc-700 px-2 text-xs text-zinc-200 hover:bg-zinc-900"
+                  >
+                    Ask about selection
+                  </button>
+                </div>
+                <p className="line-clamp-4 text-xs leading-5 text-zinc-400">{selectionDraft.selection.text}</p>
+              </div>
+            ) : null}
+            <FollowUpComposer
+              question={question}
+              onQuestionChange={setQuestion}
+              context={selectedContext}
+              onContextChange={setSelectedContext}
+              disabled={isFollowUpBusy || !analysis}
+              onSubmit={() => handleAskFollowUp()}
+            />
+            <p className="mt-2 text-xs text-zinc-500">{followUpMessage}</p>
+            <ThreadedMessages
+              messages={messages}
+              onReply={(messageId) => {
+                setSelectedContext({ type: "follow_up", parentMessageId: messageId });
+                setQuestion("");
+              }}
+            />
+          </section>
         </div>
       </section>
       <WorkflowPanel active={active} role={role} compact />
-      <section className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-4">
-        <h2 className="mb-3 text-sm font-semibold text-zinc-100">Follow-up Q&A</h2>
-        <input
-          className="h-10 w-full rounded-md border border-zinc-800 bg-[#0b0f12] px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600"
-          placeholder="Ask a follow-up question about this problem or analysis..."
-        />
-      </section>
     </>
   );
+}
+
+function AnalysisSectionPanel({
+  sectionKey,
+  label,
+  value,
+  retrievalStatus,
+  onAskSection,
+  onSelectText,
+}: {
+  sectionKey: AnalysisSectionKey;
+  label: string;
+  value: unknown;
+  retrievalStatus?: AnalysisPayload["retrieval_status"];
+  onAskSection: () => void;
+  onSelectText: (sectionText: string) => void;
+}) {
+  const sectionText = sectionToPlainText(value);
+  const isRetrievalSection = sectionKey === "related_models_similar_problems" || sectionKey === "related_articles";
+
+  return (
+    <details className="rounded border border-zinc-800 bg-[#0b0f12] px-3 py-2" open={sectionKey === "step_by_step_derivation"}>
+      <summary className="cursor-pointer select-none text-sm text-zinc-200">
+        <span className="inline-flex w-full items-center justify-between gap-3 pr-2">
+          <span>{label}</span>
+          {isRetrievalSection ? (
+            <span className="text-xs text-zinc-500">{getRetrievalLabel(sectionKey, retrievalStatus)}</span>
+          ) : null}
+        </span>
+      </summary>
+      <div
+        data-section-key={sectionKey}
+        onMouseUp={() => onSelectText(sectionText)}
+        className="mt-3 select-text space-y-3 text-sm leading-6 text-zinc-300"
+      >
+        <SectionContent sectionKey={sectionKey} value={value} retrievalStatus={retrievalStatus} />
+      </div>
+      <div className="mt-3 flex justify-end">
+        <button
+          type="button"
+          onClick={onAskSection}
+          className="h-7 rounded-md border border-zinc-800 px-2 text-xs text-zinc-300 hover:bg-zinc-900 hover:text-zinc-100"
+        >
+          Ask about section
+        </button>
+      </div>
+    </details>
+  );
+}
+
+function SectionContent({
+  sectionKey,
+  value,
+  retrievalStatus,
+}: {
+  sectionKey: AnalysisSectionKey;
+  value: unknown;
+  retrievalStatus?: AnalysisPayload["retrieval_status"];
+}) {
+  if (sectionKey === "related_models_similar_problems") {
+    const related = isRecord(value) ? value : {};
+    const problems = Array.isArray(related.similar_problems) ? related.similar_problems : [];
+
+    return (
+      <>
+        <p>{typeof related.model_explanation === "string" && related.model_explanation ? related.model_explanation : "Model explanation will appear here after analysis."}</p>
+        {problems.length > 0 ? (
+          <div className="space-y-2">
+            {problems.map((problem, index) => (
+              <RetrievedRecord key={String(isRecord(problem) ? problem.id ?? index : index)} record={problem} fallbackLabel="Problem Bank record" />
+            ))}
+          </div>
+        ) : (
+          <EmptyRetrievalNotice label="Similar Problem Bank retrieval" status={retrievalStatus?.similar_problems} />
+        )}
+      </>
+    );
+  }
+
+  if (sectionKey === "related_articles") {
+    const related = isRecord(value) ? value : {};
+    const records = Array.isArray(related.articles) ? related.articles : [];
+
+    return (
+      <>
+        <p>{typeof related.summary === "string" && related.summary ? related.summary : "Related article summary will appear here after analysis."}</p>
+        {records.length > 0 ? (
+          <div className="space-y-2">
+            {records.map((article, index) => (
+              <RetrievedRecord key={String(isRecord(article) ? article.id ?? index : index)} record={article} fallbackLabel="Article Plaza record" />
+            ))}
+          </div>
+        ) : (
+          <EmptyRetrievalNotice label="Related Article Plaza retrieval" status={retrievalStatus?.related_articles} />
+        )}
+      </>
+    );
+  }
+
+  if (sectionKey === "write_article") {
+    const article = isRecord(value) ? value : {};
+    const blocks = Array.isArray(article.insertable_blocks) ? article.insertable_blocks : [];
+
+    return (
+      <>
+        <p>{typeof article.suggested_outline === "string" && article.suggested_outline ? article.suggested_outline : getEmptySectionText(sectionKey)}</p>
+        {blocks.length > 0 ? (
+          <ul className="list-disc space-y-1 pl-4 text-zinc-400">
+            {blocks.map((block, index) => (
+              <li key={`${String(block).slice(0, 24)}-${index}`}>{String(block)}</li>
+            ))}
+          </ul>
+        ) : null}
+      </>
+    );
+  }
+
+  if (sectionKey === "add_to_personal_library") {
+    const library = isRecord(value) ? value : {};
+    const tags = Array.isArray(library.suggested_tags) ? library.suggested_tags.map(String) : [];
+
+    return (
+      <>
+        <p>{typeof library.suggested_note === "string" && library.suggested_note ? library.suggested_note : getEmptySectionText(sectionKey)}</p>
+        {tags.length > 0 ? <TagList tags={tags} /> : null}
+      </>
+    );
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    return <p className="whitespace-pre-wrap">{value}</p>;
+  }
+
+  return <p className="text-zinc-500">{getEmptySectionText(sectionKey)}</p>;
+}
+
+function FollowUpComposer({
+  question,
+  onQuestionChange,
+  context,
+  onContextChange,
+  disabled,
+  onSubmit,
+}: {
+  question: string;
+  onQuestionChange: (value: string) => void;
+  context: FollowUpContext;
+  onContextChange: (context: FollowUpContext) => void;
+  disabled: boolean;
+  onSubmit: () => void;
+}) {
+  return (
+    <div className="rounded-md border border-zinc-800 bg-zinc-950 p-2">
+      <div className="mb-2 flex flex-wrap gap-1.5">
+        <button
+          type="button"
+          onClick={() => onContextChange({ type: "whole_analysis" })}
+          className={contextButtonClass(context.type === "whole_analysis")}
+        >
+          Whole analysis
+        </button>
+        {fixedAnalysisSections.map((section) => (
+          <button
+            key={section.key}
+            type="button"
+            onClick={() => onContextChange({ type: "section", sectionKey: section.key })}
+            className={contextButtonClass(context.type === "section" && context.sectionKey === section.key)}
+          >
+            {section.label.replace("Physical reasoning reconstruction", "Reasoning").replace("Related models / similar problems", "Similar").replace("Step-by-step derivation", "Derivation")}
+          </button>
+        ))}
+      </div>
+      <textarea
+        value={question}
+        onChange={(event) => onQuestionChange(event.target.value)}
+        disabled={disabled}
+        className="h-[86px] w-full resize-none rounded-md border border-zinc-800 bg-[#0b0f12] p-3 text-sm leading-5 text-zinc-100 outline-none placeholder:text-zinc-600 disabled:cursor-not-allowed disabled:opacity-50"
+        placeholder={disabled ? "Run analysis before asking follow-ups." : "Ask about the whole analysis, a section, selected text, or a prior answer..."}
+      />
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <p className="min-w-0 truncate text-xs text-zinc-500">{contextLabel(context)}</p>
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={disabled}
+          className="h-8 rounded-md border border-zinc-700 bg-zinc-100 px-3 text-xs font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Ask
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ThreadedMessages({
+  messages,
+  onReply,
+}: {
+  messages: FollowUpMessage[];
+  onReply: (messageId: string) => void;
+}) {
+  const messageIds = new Set(messages.map((message) => message.id));
+  const roots = messages.filter((message) => !message.parentMessageId || !messageIds.has(message.parentMessageId));
+
+  return (
+    <div className="mt-3 max-h-[520px] space-y-2 overflow-y-auto pr-1">
+      {messages.length === 0 ? (
+        <div className="rounded-md border border-zinc-800 p-3 text-sm text-zinc-500">
+          No follow-ups yet. Ask about the full analysis or select text inside a section.
+        </div>
+      ) : (
+        roots.map((message) => (
+          <MessageNode key={message.id} message={message} messages={messages} onReply={onReply} depth={0} />
+        ))
+      )}
+    </div>
+  );
+}
+
+function MessageNode({
+  message,
+  messages,
+  onReply,
+  depth,
+}: {
+  message: FollowUpMessage;
+  messages: FollowUpMessage[];
+  onReply: (messageId: string) => void;
+  depth: number;
+}) {
+  const children = messages.filter((candidate) => candidate.parentMessageId === message.id);
+
+  return (
+    <div className={depth > 0 ? "ml-3 border-l border-zinc-800 pl-3" : ""}>
+      <article className={`rounded-md border p-3 ${message.role === "assistant" ? "border-zinc-800 bg-[#0b0f12]" : "border-zinc-700 bg-zinc-900/60"}`}>
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <span className="text-xs font-medium capitalize text-zinc-300">{message.role}</span>
+          <button type="button" onClick={() => onReply(message.id)} className="text-xs text-zinc-500 hover:text-zinc-100">
+            Reply
+          </button>
+        </div>
+        <p className="whitespace-pre-wrap text-sm leading-6 text-zinc-300">{message.content}</p>
+      </article>
+      {children.length > 0 ? (
+        <div className="mt-2 space-y-2">
+          {children.map((child) => (
+            <MessageNode key={child.id} message={child} messages={messages} onReply={onReply} depth={depth + 1} />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function RetrievedRecord({ record, fallbackLabel }: { record: unknown; fallbackLabel: string }) {
+  const safeRecord = isRecord(record) ? record : {};
+  const title = String(safeRecord.title ?? safeRecord.name ?? fallbackLabel);
+  const subtitle = String(safeRecord.source ?? safeRecord.author ?? safeRecord.status ?? "Retrieved database record");
+
+  return (
+    <div className="rounded-md border border-zinc-800 bg-zinc-950 p-3">
+      <p className="text-sm font-medium text-zinc-100">{title}</p>
+      <p className="mt-1 text-xs text-zinc-500">{subtitle}</p>
+    </div>
+  );
+}
+
+function EmptyRetrievalNotice({ label, status }: { label: string; status?: string }) {
+  const isNotConnected = !status || status === "not_connected";
+
+  return (
+    <div className="rounded-md border border-zinc-800 bg-zinc-950 p-3">
+      <p className="text-sm text-zinc-300">{label}</p>
+      <p className="mt-1 text-xs text-zinc-500">
+        {isNotConnected
+          ? "Retrieval is not connected, so no records are shown."
+          : "No retrieved records were returned for this analysis."}
+      </p>
+    </div>
+  );
+}
+
+function normalizeFollowUpMessages(input: unknown): FollowUpMessage[] {
+  if (isRecord(input)) {
+    const pair = [input.user, input.assistant, input.userMessage, input.assistantMessage].filter(Boolean);
+    if (pair.length > 0) {
+      return normalizeFollowUpMessages(pair);
+    }
+  }
+
+  if (!Array.isArray(input)) {
+    return [];
+  }
+
+  return input
+    .filter(isRecord)
+    .map((message, index) => ({
+      id: String(message.id ?? message.messageId ?? `local-${index}`),
+      parentMessageId:
+        typeof message.parentMessageId === "string"
+          ? message.parentMessageId
+          : typeof message.parent_message_id === "string"
+            ? message.parent_message_id
+            : null,
+      role: (message.role === "assistant" || message.kind === "assistant" ? "assistant" : "user") as FollowUpMessage["role"],
+      content: String(message.content ?? message.answer ?? message.question ?? ""),
+      context: isFollowUpContext(message.context) ? message.context : undefined,
+      createdAt: typeof message.createdAt === "string" ? message.createdAt : undefined,
+    }))
+    .filter((message) => message.content.trim().length > 0);
+}
+
+function mergeFollowUpMessages(current: FollowUpMessage[], next: FollowUpMessage[]) {
+  const byId = new Map(current.map((message) => [message.id, message]));
+  for (const message of next) {
+    byId.set(message.id, message);
+  }
+
+  return Array.from(byId.values());
+}
+
+function buildAnalysisStatus(analysis: AnalysisPayload) {
+  if (analysis.provider?.ran) {
+    return "Structured analysis returned.";
+  }
+
+  if (analysis.provider?.configured === false) {
+    return "Structured analysis returned. Provider is not configured for future runs.";
+  }
+
+  return "Structured analysis returned.";
+}
+
+function contextButtonClass(active: boolean) {
+  return `h-7 rounded-md border px-2 text-xs ${
+    active
+      ? "border-zinc-100 bg-zinc-100 text-zinc-950"
+      : "border-zinc-800 bg-[#0b0f12] text-zinc-400 hover:text-zinc-100"
+  }`;
+}
+
+function contextLabel(context: FollowUpContext) {
+  if (context.type === "whole_analysis") {
+    return "Context: whole analysis";
+  }
+
+  if (context.type === "section") {
+    return `Context: ${fixedAnalysisSections.find((section) => section.key === context.sectionKey)?.label ?? context.sectionKey}`;
+  }
+
+  if (context.type === "selected_text") {
+    return `Context: selected text, ${context.selection.text.length} characters`;
+  }
+
+  return `Replying to message ${context.parentMessageId}`;
+}
+
+function getRetrievalLabel(sectionKey: AnalysisSectionKey, retrievalStatus?: AnalysisPayload["retrieval_status"]) {
+  if (sectionKey === "related_models_similar_problems") {
+    return retrievalStatus?.similar_problems === "not_connected" ? "not connected" : retrievalStatus?.similar_problems ?? "pending";
+  }
+
+  if (sectionKey === "related_articles") {
+    return retrievalStatus?.related_articles === "not_connected" ? "not connected" : retrievalStatus?.related_articles ?? "pending";
+  }
+
+  return "";
+}
+
+function getEmptySectionText(sectionKey: AnalysisSectionKey) {
+  if (sectionKey === "related_models_similar_problems") {
+    return "Similar problems require real Problem Bank retrieval.";
+  }
+
+  if (sectionKey === "related_articles") {
+    return "Related articles require real Article Plaza retrieval.";
+  }
+
+  return "Run structured analysis to populate this section.";
+}
+
+function sectionToPlainText(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (!value) {
+    return "";
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return "";
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isFollowUpContext(value: unknown): value is FollowUpContext {
+  return isRecord(value) && typeof value.type === "string";
 }
 
 function ExtractedTextCard({
