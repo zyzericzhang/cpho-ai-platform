@@ -1,176 +1,63 @@
 # Agent Workflow Architecture
 
-本文件解释为什么本仓库采用 `AGENTS.md + docs + .github templates + .agents/skills` 的 Codex-native 架构，而不是复制 Claude Code 社区的 `.claude/` 全家桶。
-
-## References Checked
-
-本次架构调整参考了这些公开资料的结构思想：
-
-- OpenAI `openai/skills`：https://github.com/openai/skills。Agent Skills 是可复用的 instructions、scripts、resources 文件夹；system skills 自动内置，curated/experimental skills 可通过 `$skill-installer` 安装。
-- AGENTS.md official format：https://github.com/agentsmd/agents.md。`AGENTS.md` 是 coding agents 的专用项目说明，补充 README，不替代人类文档。
-- ShakaCode `claude-code-commands-skills-agents`：https://github.com/shakacode/claude-code-commands-skills-agents。该 repo 把 commands、agents、skills、docs、templates 分层，尤其强调 self-review、security-review、file-by-file-review。
-- ykdojo `claude-code-tips`：https://github.com/ykdojo/claude-code-tips。该 repo 强调小任务拆分、测试循环、Git/GitHub CLI、worktrees 并行隔离。
-
-结论：本项目应该吸收“可复用流程”和“审查清单”的思想，但不要搬运大量通用 agent 配置。
+本文件解释为什么本仓库采用当前的 agent 工作流架构。
 
 ## Architecture Choice
 
-本仓库采用：
+本仓库采用 ECC 启发的轻量级架构：
 
 ```text
-AGENTS.md
-docs/
-.github/ISSUE_TEMPLATE/
-.github/PULL_REQUEST_TEMPLATE.md
-.agents/skills/*/SKILL.md
-Figma canonical design file
-Build web app implementation loop
-Local verification evidence
+AGENTS.md          ← 唯一硬规则（所有 agent 必读）
+SOUL.md            ← 核心红线（极少改动）
+WORKING_CONTEXT.md ← 短时记忆 + 实时交互日志
+PROJECT_STATUS.md  ← 长期资产记忆
+
+.cursorrules / .clinerules  ← 注入层，强制生命周期
+app/GEMINI.md               ← 前端子目录精准路由指令
+lib/GEMINI.md               ← 后端子目录精准路由指令
+
+.agents/skills/*/SKILL.md   ← 可复用操作手册
+docs/                       ← 产品规格 + 安全清单
+design/                     ← UI 参考截图
 ```
 
-原因：
+## Design Rationale
 
-- `AGENTS.md` 放全仓硬规则，短、硬、可执行。
-- `docs/` 放产品、安全、UI、AI Solver 契约。
-- `.github/` 把任务和 PR 变成可验收流程。
-- `.agents/skills/` 放重复任务的操作手册，避免每次重新 prompt。
-- Figma 承担前端设计事实来源；代码实现必须从目标 frame 读取结构，再落到 Next.js/Tailwind 组件。
-- Build web app/Codex 承担实际前端实现迭代；本地截图、录屏和浏览器验证记录承担可审查的 UI 证据。
-- 不使用 `.claude/commands`，因为当前主 agent 是 Codex，命令流程用 issue/PR template 和 skills 承载。
+1. **单一规则源**：`AGENTS.md` 是所有 agent 的唯一硬规则。不分散到多个重复的规则文件。
+2. **三层记忆**：`SOUL.md`（灵魂）、`PROJECT_STATUS.md`（长期资产）、`WORKING_CONTEXT.md`（短时工作台）。借鉴 ECC 的 CLAUDE.md / WORKING-CONTEXT.md / SOUL.md 分层。
+3. **子目录精准路由**：`app/GEMINI.md` 和 `lib/GEMINI.md` 让 agent 进入特定目录时加载精准指令，减少 token 浪费。
+4. **PDCA 连续日志**：Phase 2 强制 agent 在操作前记录计划、操作后记录结果，实现可断点续传。
+5. **Skills 而非 Commands**：用 `.agents/skills/` 承载可复用流程，而非依赖特定 agent 工具的 commands 系统。
 
-## Figma and Build Web App Collaboration
+## Why Not Full ECC
 
-Canonical design file：
+- ECC 的 Hooks 系统（`session-start.sh` 等）依赖 Claude Code 的 shell hook 支持，Codex/Antigravity 不支持。用 prompt 规则替代。
+- ECC 的 200+ skills 库是通用的；本项目只保留 CPHO 专用 skill。
+- ECC 的 Rust control plane（ecc2/）对本项目过重。
 
-```text
-https://www.figma.com/design/CjqygT7bVO6wEZOKjLOyyJ/cpho-ai-platform?node-id=0-1&t=x0oQGJwauCyLvW9W-1
-```
+## References
 
-Figma file facts checked through the Figma plugin：
-
-- File key：`CjqygT7bVO6wEZOKjLOyyJ`
-- Root node：`0:1`
-- Canvas：`Round 1 - CPHO Core Screens`
-- Current core frames include App Shell / Navigation, AI Solver, Problem Bank, Article Plaza, Personal Library, and Editor.
-
-Frontend collaboration flow：
-
-1. Product rules come from `AGENTS.md` and `docs/product-spec.md`.
-2. Visual layout comes from the target Figma frame in the canonical file.
-3. Build web app/Codex iterates the real Next.js implementation in this repository.
-4. Implementation uses Next.js, React, TypeScript, Tailwind CSS, and local component primitives.
-5. Codex must adapt Figma output to the project architecture; generated Figma code is reference material, not a direct paste target.
-6. Local screenshots, recordings, or browser verification notes provide implementation evidence for visual review.
-7. Frontend verification compares the implementation evidence against the Figma frame.
-8. If Figma and product/security docs conflict, product/security docs win and the visual difference must be documented in the PR.
-
-Boundaries：
-
-- Figma is the source for visual intent, not database permissions or AI behavior.
-- Build web app can speed up UI iteration, but generated output must still obey CPHO product rules and repo architecture.
-- UI evidence is not proof that auth, RLS, AI provider safety, or owner boundaries are correct.
-- Local lint/build and relevant manual verification remain required even when shared preview evidence exists.
-
-## Files Kept
-
-核心文档只保留这些：
-
-- `docs/product-spec.md`：产品事实来源。
-- `docs/ai-solver-spec.md`：AI Solver、OpenRouter/Gemini provider、retrieval 边界。
-- `docs/permission-matrix.md`：student/admin 权限和 RLS 计划。
-- `docs/backend-risk-checklist.md`：后端、上传、AI key、RLS、费用风险审查。
-- `docs/frontend-style-guide.md`：Figma + Build web app + 本地验证证据驱动的前端流程。
-- `docs/agent-workflow-architecture.md`：本文件，解释架构。
-
-原始模块规格仍保留在 `docs/Overview.md`、`docs/v1-overview (1).md`、`docs/ai-solver.md`、`docs/problem-bank.md`、`docs/article-square.md`、`docs/editor.md`、`docs/personal-library.md`，用于追溯产品来源。
-
-## Files Removed
-
-已删除这些重复规划文档：
-
-- `docs/architecture.md`
-- `docs/design-workflow.md`
-- `docs/git-workflow.md`
-- `docs/ai-provider-architecture.md`
-
-删除原因：这些文件把规则分散得太细，容易让 agent 不知道哪个文件是事实来源。必要内容已经合并进 `AGENTS.md`、`docs/ai-solver-spec.md`、`docs/frontend-style-guide.md` 和本文件。
-
-当前保留 `figma-design-review` 作为前端视觉验收 skill。它只用于对照 Figma frame、设计截图和实现截图，不替代 `frontend-tab-builder` 的实现流程，也不替代 `playwright-ui-verifier` 的行为验收。
-
-## Repo-local Skills
-
-### `frontend-tab-builder`
-
-用于构建 AI Solver、Problem Bank、Article Plaza、Personal Library、Editor、Admin 页面。它强制前端任务先说明目标用户、页面目标、主要动作、状态和验收标准，并要求 Figma reference、实现截图、录屏或本地浏览器验证证据。
-
-### `backend-permission-review`
-
-用于所有 backend、Supabase、RLS、storage、auth、AI provider 改动。它检查 student/admin 边界、owner scope、secret exposure、上传安全和 AI 费用滥用风险。
-
-### `ai-solver-flow-builder`
-
-用于核心 AI Solver flow。它强制执行：
-
-- No standard answer, no AI solution。
-- fixed collapsible sections。
-- server-side AI provider。
-- retrieval only for related problems/articles。
-
-### `pr-risk-auditor`
-
-用于合并前审查 PR。它要求 changed files、验收覆盖、测试、build/lint、preview、安全风险、权限风险、AI provider/费用风险和手动验证。
-
-### `playwright-ui-verifier`
-
-用于“不读代码，用行为验收”的浏览器验证。重点检查登录、权限、上传、标准答案 gate、折叠 sections、题库搜索、文章引用和个人库保存。
-
-### `figma-design-review`
-
-用于前端实现后的视觉验收。它对照 canonical Figma frame、`design/` 截图、实现截图、录屏或本地预览检查布局、层级、dark UI 风格、右侧 panel、表格、折叠 sections 和不可用状态。
-
-## Git and Agent Rules
-
-- `main` stable only。
-- `dev` integration branch。
-- feature branches merge into `dev`。
-- no direct commits to `main`。
-- one primary implementation agent per feature branch。
-- parallel work only on separate branches or worktrees。
-- review agents inspect/comment by default, not push。
-- Gemini CLI may be an independent architecture critic or long-context reviewer。
+- [everything-claude-code](https://github.com/affaan-m/everything-claude-code)：架构思想来源。
+- [OpenAI skills](https://github.com/openai/skills)：Skills 文件夹结构参考。
+- [AGENTS.md standard](https://github.com/agentsmd/agents.md)：AGENTS.md 格式标准。
 
 ## Security Boundary
 
-本架构把安全规则放到三层：
+安全规则分三层：
 
 1. `AGENTS.md`：所有 agent 每次都能看到的硬规则。
 2. `docs/backend-risk-checklist.md`：后端和 PR 审查清单。
 3. `backend-permission-review` skill：重复执行的安全审查流程。
 
-重点风险：
+## Files Kept
 
-- student 写 public Problem Bank。
-- 用户读取他人 private data。
-- AI key 进入 client。
-- 上传文件绕过类型/大小限制。
-- 没有标准答案仍能运行 AI。
-- 模型编造类似题和相关文章。
+核心文档：
 
-## Why Not Install Many External Skills Now
+- `docs/product-spec.md`：产品事实来源。
+- `docs/ai-solver-spec.md`：AI Solver 和 provider 边界。
+- `docs/permission-matrix.md`：student/admin 权限。
+- `docs/backend-risk-checklist.md`：后端安全审查清单。
+- `docs/frontend-style-guide.md`：UI 风格规范。
+- `docs/AGENT_WORKFLOW_GUIDE.md`：人类操作者 SOP。
 
-当前不大量安装外部 skills。理由：
-
-- 项目还没有应用代码，通用 skills 会增加噪音。
-- CPHO 平台有强产品规则，项目专用 skill 比通用 skill 更可靠。
-- 外部 skills 应先 review，再决定是否安装。
-- Figma plugin/skill 是前端设计协作的例外：它用于读取设计和支持 UI 对照验收，不替代项目产品、安全和权限契约。本项目不默认使用 Vercel 相关能力。
-
-后续可以按需使用 `$skill-installer` 安装 curated 或实验 skill，但必须先确认不会覆盖本项目权限和安全流程。
-
-## First Implementation Order
-
-1. `feature/project-foundation-app-shell`：Next.js shell、dark layout、simple auth placeholder。
-2. `feature/auth-supabase-roles`：Supabase Auth、profiles、student/admin。
-3. `feature/ai-solver-data-and-upload`：AI Solver tables、upload、extraction placeholder、confirmation gate。
-4. `feature/openrouter-gemini-analysis`：server-side OpenRouter provider and structured output。
-5. `feature/problem-bank-admin-mvp`：admin-managed papers/problems/standard answers。
+`docs/archive/` 内保留已归档的历史模块规格文档，仅用于追溯。

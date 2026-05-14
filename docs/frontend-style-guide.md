@@ -1,12 +1,6 @@
 # Frontend Style Guide
 
-Frontend work must be Figma-first, Build-web-app-assisted, and backed by local verification evidence. The canonical design file is:
-
-```text
-https://www.figma.com/design/CjqygT7bVO6wEZOKjLOyyJ/cpho-ai-platform?node-id=0-1&t=x0oQGJwauCyLvW9W-1
-```
-
-The current Figma canvas is `Round 1 - CPHO Core Screens`. The 5 screenshots in `design/` are local fallback references when Figma is unavailable or when a PR needs static evidence. This project does not use Vercel; implementation evidence should come from local screenshots, recordings, browser verification notes, or a non-Vercel shared preview only if one is explicitly configured.
+前端工作以 `design/` 目录下的参考截图和当前实现代码为准。
 
 ## Visual Standard
 
@@ -41,24 +35,7 @@ Module expectations：
 
 ## Reference Screenshots
 
-Canonical Figma file：
-
-- File：`cpho-ai-platform`
-- Key：`CjqygT7bVO6wEZOKjLOyyJ`
-- Canvas：`Round 1 - CPHO Core Screens`
-- Root node：`0:1`
-- URL：`https://www.figma.com/design/CjqygT7bVO6wEZOKjLOyyJ/cpho-ai-platform?node-id=0-1&t=x0oQGJwauCyLvW9W-1`
-
-Known Figma frames：
-
-- App Shell / Navigation：`3:2`
-- AI Solver / Upload Confirm Analysis：`3:42`
-- Problem Bank / Table Detail：`3:123`
-- Article Plaza / Reader Detail：present in the same canvas
-- Personal Library / Table Detail：`3:322`
-- Editor / Rich Text Publish：`3:427`
-
-Local fallback screenshots：
+Local screenshots in `design/` 目录：
 
 - AI Solver：`design/ChatGPT Image Apr 27, 2026, 02_57_54 PM (1).png`
 - Problem Bank：`design/ChatGPT Image Apr 27, 2026, 02_57_55 PM (2).png`
@@ -66,33 +43,25 @@ Local fallback screenshots：
 - Personal Library：`design/ChatGPT Image Apr 27, 2026, 02_57_55 PM (4).png`
 - Editor：`design/ChatGPT Image Apr 27, 2026, 02_57_56 PM (5).png`
 
-Future stable references should be copied or exported to `docs/design/screenshots/`.
-
-## Figma + Build Web App Workflow
-
-Every frontend issue should reference the canonical Figma file and the target frame node. If Figma is unavailable, it must reference one local screenshot under `design/` or `docs/design/screenshots/`.
+## Frontend Workflow
 
 Before implementation：
 
-- Use the Figma plugin/skill to read the target frame structure.
-- Translate Figma into project components rather than copying generated code blindly.
-- Preserve CPHO product rules even when a visual frame is incomplete.
+- 查看 `design/` 目录下的目标截图。
+- 理解目标页面的布局和交互。
+- 遵循 CPHO 产品规则。
 
 During implementation：
 
-- Use Build web app/Codex to iterate the actual Next.js UI in the repo.
-- Keep generated UI changes inside the project stack：Next.js, React, TypeScript, Tailwind CSS, and local component primitives.
-- Do not let Build web app introduce public registration, generic chatbot behavior, fake retrieval data, or client-side AI secrets.
+- 使用 Next.js、React、TypeScript、Tailwind CSS 和本地组件原语。
+- 不引入公共注册、通用聊天、伪造检索数据、客户端 AI secrets。
 
 After implementation：
 
-- Include the reference Figma frame or fallback screenshot.
-- Include an implementation screenshot, recording, or local browser verification notes.
-- visual differences
-- changed files
-- build/lint result
-
-Codex should use Figma plugin/skill when explicitly asked to inspect, create, edit, or compare Figma frames. Frontend PRs should use `figma-design-review` when visual fidelity is part of acceptance. Local screenshots, recordings, or browser verification notes are review evidence, not a replacement for lint/build or product/security checks.
+- 提供实现截图、录屏或本地浏览器验证说明。
+- 检查与参考截图的视觉差异。
+- 运行 `npm run dev` 启动本地 server，让用户验收。
+- 包含 changed files 和 build/lint result。
 
 ## Component Rules
 

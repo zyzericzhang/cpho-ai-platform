@@ -8,13 +8,23 @@ Before executing any tool, analyzing any code, or responding to the user, you MU
 1. Run `git status` to check the current branch. 
 2. Ensure you are on a NEW dedicated feature branch for the current task. **DO NOT modify code directly on `main`, `dev`, or an old unrelated branch.** If the user asks for a new task, create a new branch immediately (`git checkout -b <branch-name>`).
 3. Read `SOUL.md` (Core values and red lines).
-4. Read `WORKING_CONTEXT.md` (Current short-term memory and focus).
+4. Read `WORKING_CONTEXT.md` (Current short-term memory and interaction log).
 5. Read `PROJECT_STATUS.md` to understand the bigger picture.
+6. Read `AGENTS.md` for project rules (the single source of truth for all agent rules).
 
-## Phase 2: Execution
-Perform the user's task. Follow the "Standard Workflow" defined in `AGENTS.md` (or `GEMINI.md`).
+## Phase 2: Execution & Continuous Logging (PDCA Loop)
+You MUST maintain a continuous log of your actions to allow the user to intervene at any time and to ensure context is never lost if the session is interrupted.
+1. **Plan**: Before executing ANY significant tool call, code change, or terminal command, you MUST update the `WORKING_CONTEXT.md` file's `## 📝 Implementation Log (交互区)` section with your intended next step.
+2. **Do**: Perform the planned action.
+3. **Check**: Update the `## 📝 Implementation Log (交互区)` with the result.
+4. **Act**: Adjust plan based on results and repeat.
+
+Follow the rules defined in `AGENTS.md`:
 - Do not bypass RLS, Auth, or safety checks.
-- Always implement real UI (no Figma placeholders) according to guidelines.
+- Always implement real UI according to guidelines.
+- Every function/component must have Chinese comments explaining "what" and "why".
+- After completing frontend changes, run `npm run dev` and tell the user the URL.
+- When a task involves 3+ unrelated files, spawn subagents.
 
 ## Phase 3: Memory Persistence (Termination - CRITICAL)
 Before you conclude your response to the user, you MUST update the state:

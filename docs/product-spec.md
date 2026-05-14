@@ -1,6 +1,6 @@
 # Product Spec
 
-本文件是 CPHO AI Training System 的产品事实来源。原始材料保留在同目录模块规格中：`Overview.md`、`v1-overview (1).md`、`ai-solver.md`、`problem-bank.md`、`article-square.md`、`editor.md`、`personal-library.md`。
+本文件是 CPHO AI Training System 的产品事实来源。原始设计材料已归档至 `docs/archive/`。当前活跃的模块规格：`problem-bank.md`、`article-square.md`、`editor.md`、`personal-library.md`。
 
 ## Product Positioning
 

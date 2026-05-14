@@ -163,22 +163,27 @@ Forbidden：
 
 ## Server Data Requirements
 
-Initial tables planned：
+Current tables：
 
 - `ai_solver_sessions`
 - `uploaded_materials`
-- `extracted_materials`
 - `ai_solution_outputs`
-- `ai_messages` for future follow-up Q&A
+- `ai_messages` for follow-up Q&A
 
 All private records must include `user_id` and use owner-only RLS.
 
-## v1 Validation Does Not Require
+注：`extracted_materials` 已不再需要，当前 Gemini 直接读取 multimodal 材料。
 
-- full history persistence as launch blocker
-- follow-up Q&A
+## v1 已实现与待实现
+
+已实现：
+- ✅ follow-up Q&A（threaded + selected-text）
+- ✅ multimodal image/PDF input
+- ✅ server-side 七任务编排
+
+待实现：
+- full history persistence to Supabase（当前使用 local-store）
 - article creation from AI output
 - real retrieval implementation
-- manual text confirmation UI before final analysis
 
 But the flow must leave room for these later.
