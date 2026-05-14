@@ -17,6 +17,7 @@ const formSchema = z.object({
   standardAnswer: z.string().min(10, '标准答案至少需要10个字符'),
   category: z.string().optional(),
   topics: z.string().optional(),
+  status: z.enum(['draft', 'published', 'archived']),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -36,6 +37,7 @@ export function EditProblemForm({ problem }: { problem: Problem }) {
       standardAnswer: problem.standard_answer || '',
       category: problem.category || '',
       topics: problem.topics?.join(', ') || '',
+      status: problem.status || 'published',
     },
   });
 
@@ -112,6 +114,15 @@ export function EditProblemForm({ problem }: { problem: Problem }) {
           <div>
             <label htmlFor="topics" className={labelStyles}>知识点 (逗号分隔)</label>
             <input id="topics" {...form.register('topics')} className={inputStyles} />
+          </div>
+
+          <div>
+            <label htmlFor="status" className={labelStyles}>发布状态</label>
+            <select id="status" {...form.register('status')} className={inputStyles}>
+              <option value="draft">草稿</option>
+              <option value="published">已发布</option>
+              <option value="archived">已归档</option>
+            </select>
           </div>
         </div>
       </fieldset>

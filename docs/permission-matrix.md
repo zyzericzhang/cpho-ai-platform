@@ -37,7 +37,7 @@ Roles：`student`、`admin`。v1 no public registration。
 - `profiles`：owner select/update basic fields；admin select if needed。
 - `problems`：published read for authenticated；admin all writes。
 - `papers`：authenticated read；admin all writes。
-- `problem_standard_answers`：read when linked problem is published；admin writes。
+- `problems.standard_answer`：only readable through published problem rows；admin writes through Problem Bank admin routes。
 - `uploaded_materials`、`extracted_materials`、`ai_solver_sessions`、`ai_solution_outputs`、`ai_messages`：`user_id = auth.uid()` only。
 - `documents`：owner all；public select when `visibility = 'public'`。
 - `article_problem_links`、`embedded_problem_references`：read through public/owner document；owner writes。

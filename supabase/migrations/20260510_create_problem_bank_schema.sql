@@ -16,7 +16,7 @@ create table if not exists public.papers (
   published_at timestamptz,
   source_pdf_storage_path text,
   created_at timestamptz not null default now(),
-  uploader_id uuid not null references auth.users(id) on delete set null,
+  uploader_id uuid references auth.users(id) on delete set null,
   constraint papers_title_check check (length(btrim(title)) > 0)
 );
 
@@ -31,7 +31,7 @@ create table if not exists public.problems (
   topics text[],
   model_tags text[],
   created_at timestamptz not null default now(),
-  uploader_id uuid not null references auth.users(id) on delete set null,
+  uploader_id uuid references auth.users(id) on delete set null,
   constraint problems_title_check check (length(btrim(title)) > 0),
   constraint problems_statement_check check (length(btrim(problem_statement)) > 0),
   constraint problems_answer_check check (length(btrim(standard_answer)) > 0)
@@ -39,7 +39,7 @@ create table if not exists public.problems (
 
 -- Create storage bucket for paper PDFs
 insert into storage.buckets (id, name, public)
-values ('problem-bank-papers', 'problem-bank-papers', true)
+values ('problem-bank-papers', 'problem-bank-papers', false)
 on conflict (id) do nothing;
 
 -- Enable RLS for the new tables
@@ -83,9 +83,12 @@ create policy "Admins can delete problems"
   using (public.is_admin());
 
 -- Policies for 'problem-bank-papers' storage bucket
-create policy "Paper PDFs are public and viewable by everyone"
+create policy "Admins can view paper PDFs"
   on storage.objects for select
-  using ( bucket_id = 'problem-bank-papers' );
+  using (
+    bucket_id = 'problem-bank-papers'
+    and public.is_admin()
+  );
 
 create policy "Admins can upload paper PDFs"
   on storage.objects for insert

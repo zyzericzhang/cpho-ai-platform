@@ -1,7 +1,7 @@
 import type { ValidatedUploadFile } from "./upload-validation";
 
-export async function toProviderImageDataUrl(file: File, validated: ValidatedUploadFile) {
-  if (validated.kind !== "image") {
+export async function toProviderMaterialDataUrl(file: File, validated: ValidatedUploadFile) {
+  if (validated.kind !== "image" && validated.kind !== "pdf") {
     return undefined;
   }
 

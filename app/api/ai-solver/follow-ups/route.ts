@@ -3,7 +3,7 @@ import { AI_SOLVER_SECTION_KEYS } from "@/lib/ai-solver/analysis-schema";
 import { runAiSolverFollowUp } from "@/lib/ai-solver/follow-up-provider";
 import {
   assertAnalysisGate,
-  collectProviderSafeImageContexts,
+  collectProviderSafeMaterialContexts,
   createFollowUpAssistantMessage,
   createFollowUpUserMessage,
   getOwnedAnalysisResult,
@@ -12,12 +12,7 @@ import {
 } from "@/lib/ai-solver/local-store";
 import { toSafeProviderError } from "@/lib/ai-solver/provider-orchestration";
 import { getRequestUserId } from "@/lib/ai-solver/request-auth";
-import type {
-  AiSolverAnalysisResult,
-  AiSolverImageContext,
-  AiSolverMessage,
-  AiSolverMessageContext,
-} from "@/lib/ai-solver/types";
+import type { AiSolverAnalysisResult, AiSolverMessage, AiSolverMessageContext } from "@/lib/ai-solver/types";
 
 type FollowUpPostBody = {
   sessionId?: string;
@@ -69,7 +64,7 @@ export async function POST(request: NextRequest) {
     const parentMessageId = body.parentMessageId ?? getContextParentMessageId(context);
     const existingMessages = getOwnedMessages(body.sessionId, userId);
     const parentChain = collectParentChain(existingMessages, parentMessageId);
-    const images = collectProviderSafeImageContexts(body.sessionId, userId).map(toProviderImageInput);
+    const materials = collectProviderSafeMaterialContexts(body.sessionId, userId);
     const userMessage = createFollowUpUserMessage(
       {
         sessionId: body.sessionId,
@@ -84,7 +79,7 @@ export async function POST(request: NextRequest) {
         problemText: extraction.problemText,
         diagramNotes: extraction.diagramNotes,
         standardAnswer: extraction.standardAnswer,
-        images,
+        materials,
       },
       analysisResult: analysis,
       context,
@@ -176,17 +171,6 @@ function collectParentChain(messages: AiSolverMessage[], parentMessageId: string
 
 function isSectionKey(value: unknown): value is keyof AiSolverAnalysisResult["sections"] {
   return typeof value === "string" && AI_SOLVER_SECTION_KEYS.includes(value as keyof AiSolverAnalysisResult["sections"]);
-}
-
-function toProviderImageInput(image: { mimeType: string; dataUrl: string }): AiSolverImageContext {
-  if (!image.mimeType.startsWith("image/")) {
-    throw new Error("Stored image context is not a supported image MIME type.");
-  }
-
-  return {
-    mimeType: image.mimeType as `image/${string}`,
-    data: image.dataUrl,
-  };
 }
 
 function toClientMessage(message: AiSolverMessage) {

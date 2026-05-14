@@ -5,9 +5,10 @@ import { notFound } from 'next/navigation';
 export default async function EditProblemPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const { problem, error } = await getProblemForEdit(params.id);
+  const resolvedParams = await params;
+  const { problem, error } = await getProblemForEdit(resolvedParams.id);
 
   if (error || !problem) {
     notFound();

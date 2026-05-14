@@ -1,4 +1,4 @@
-import type { AiSolverAnalysisInput, AiSolverImageContext } from "./types";
+import type { AiSolverAnalysisInput, AiSolverImageContext, AiSolverProviderMaterialContext } from "./types";
 
 export type OpenAiCompatibleTextPart = {
   type: "text";
@@ -12,7 +12,18 @@ export type OpenAiCompatibleImagePart = {
   };
 };
 
-export type OpenAiCompatibleContentPart = OpenAiCompatibleTextPart | OpenAiCompatibleImagePart;
+export type OpenAiCompatibleFilePart = {
+  type: "file";
+  file: {
+    filename: string;
+    file_data: string;
+  };
+};
+
+export type OpenAiCompatibleContentPart =
+  | OpenAiCompatibleTextPart
+  | OpenAiCompatibleImagePart
+  | OpenAiCompatibleFilePart;
 
 export type OpenAiCompatibleMessage = {
   role: "system" | "user" | "assistant";
@@ -24,7 +35,10 @@ export function buildAiSolverUserContent(input: AiSolverAnalysisInput): OpenAiCo
     {
       type: "text",
       text: [
-        "Analyze this physics olympiad problem using the confirmed standard answer.",
+        "Analyze this physics olympiad problem from the uploaded multimodal materials.",
+        "Treat files labeled problem as the problem statement, files labeled answer as the standard answer, and files labeled combined as both.",
+        "The answer material is the source of truth for the no-standard-answer gate.",
+        "Read PDFs/images directly; do not require manually transcribed text.",
         "",
         "<problem_text>",
         input.problemText.trim(),
@@ -40,6 +54,29 @@ export function buildAiSolverUserContent(input: AiSolverAnalysisInput): OpenAiCo
       ].join("\n"),
     },
   ];
+
+  for (const material of input.materials ?? []) {
+    content.push({
+      type: "text",
+      text: [
+        `<uploaded_material role="${material.role}" kind="${material.kind}">`,
+        `filename=${material.fileName}`,
+        `mime_type=${material.mimeType}`,
+        "</uploaded_material>",
+      ].join("\n"),
+    });
+
+    const filePart = toFilePart(material);
+    if (filePart) {
+      content.push(filePart);
+      continue;
+    }
+
+    const imagePart = toMaterialImagePart(material);
+    if (imagePart) {
+      content.push(imagePart);
+    }
+  }
 
   for (const image of input.images ?? []) {
     const imageUrl = toImageUrl(image);
@@ -66,6 +103,15 @@ export function getDroppedImageWarnings(images: AiSolverImageContext[] | undefin
     : [];
 }
 
+export function getDroppedMaterialWarnings(materials: AiSolverProviderMaterialContext[] | undefined) {
+  if (!materials?.length) return [];
+
+  const dropped = materials.filter((material) => !toFilePart(material) && !toMaterialImagePart(material)).length;
+  return dropped > 0
+    ? [`${dropped} uploaded material item(s) were omitted because they are not provider-supported PDF/image data URLs.`]
+    : [];
+}
+
 function toImageUrl(image: AiSolverImageContext) {
   if (!image.mimeType.startsWith("image/")) {
     return null;
@@ -81,4 +127,39 @@ function toImageUrl(image: AiSolverImageContext) {
   }
 
   return null;
+}
+
+function toFilePart(material: AiSolverProviderMaterialContext): OpenAiCompatibleFilePart | null {
+  if (material.kind !== "pdf" || material.mimeType !== "application/pdf") {
+    return null;
+  }
+
+  if (!material.dataUrl.startsWith("data:application/pdf;base64,")) {
+    return null;
+  }
+
+  return {
+    type: "file",
+    file: {
+      filename: material.fileName,
+      file_data: material.dataUrl,
+    },
+  };
+}
+
+function toMaterialImagePart(material: AiSolverProviderMaterialContext): OpenAiCompatibleImagePart | null {
+  if (material.kind !== "image" || !material.mimeType.startsWith("image/")) {
+    return null;
+  }
+
+  if (!material.dataUrl.startsWith(`data:${material.mimeType};base64,`)) {
+    return null;
+  }
+
+  return {
+    type: "image_url",
+    image_url: {
+      url: material.dataUrl,
+    },
+  };
 }

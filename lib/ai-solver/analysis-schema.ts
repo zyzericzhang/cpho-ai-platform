@@ -119,7 +119,11 @@ export function parseProviderJson(content: string): unknown {
     const end = candidate.lastIndexOf("}");
 
     if (start >= 0 && end > start) {
-      return JSON.parse(candidate.slice(start, end + 1));
+      try {
+        return JSON.parse(candidate.slice(start, end + 1));
+      } catch {
+        throw new Error("AI provider returned non-JSON content.");
+      }
     }
 
     throw new Error("AI provider returned non-JSON content.");
@@ -164,8 +168,37 @@ function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function asString(value: unknown) {
-  return typeof value === "string" ? value.trim() : "";
+function asString(value: unknown): string {
+  if (typeof value === "string") {
+    return value.trim();
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(asString).filter(Boolean).join("\n\n");
+  }
+
+  if (isRecord(value)) {
+    const preferred: string[] = [
+      value.title,
+      value.step_title,
+      value.heading,
+      value.summary,
+      value.content,
+      value.step_content,
+      value.text,
+      value.explanation,
+    ]
+      .map(asString)
+      .filter(Boolean);
+
+    if (preferred.length > 0) {
+      return preferred.join("\n");
+    }
+
+    return JSON.stringify(value);
+  }
+
+  return "";
 }
 
 function asStringArray(value: unknown) {

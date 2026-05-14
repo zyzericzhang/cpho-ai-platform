@@ -1,5 +1,15 @@
 # 实施日志 (IMPLEMENTATION_LOG.md)
 
+## Current Epic: 2026-05-12 Supabase 配置与端到端验证
+**Target Branch**: `dev`
+**Goal**: 修复当前构建阻塞、收紧 Supabase 权限策略、配置本地 Supabase 环境，并用真实试卷/答案 PDF 完成 AI Solver 上传与已实现功能验证。
+
+| ID | Task | Branch | Status | Owner | Notes |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| QA12-A | 构建阻塞修复 | `dev` | Done | Codex | `npx tsc --noEmit`、`npm run lint` 通过；修复 Supabase client env 兼容、AI Solver auth import、Problem Bank admin 类型和 dynamic params。 |
+| QA12-B | Supabase 权限 hardening | `dev` | Done | Codex + subagents | 迁移已落远端；profile role 自提权被 trigger 拒绝；Problem Bank published reads 限定 authenticated/admin；Security Advisor 仅剩 leaked-password protection Dashboard 警告。 |
+| QA12-C | Playwright 真实上传验证 | `dev` | Done | Codex | AI Solver 真实题目/答案 PDF 解析与 follow-up 通过；Problem Bank admin 通过网站表单上传真实题目 PDF + 答案 PDF 并创建 published 题目。截图写入 `output/playwright/`，证据索引写入 `docs/e2e-verification-2026-05-13.md`。 |
+
 ## Current Epic: Issue #11 中文化真实页面内容与导览逻辑
 **Target Branch**: `codex/issue-11-integration-verify`
 **GitHub Issue**: https://github.com/zyzericzhang/cpho-ai-platform/issues/11

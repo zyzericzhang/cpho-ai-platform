@@ -38,10 +38,9 @@ AI Solver 是 v1 核心模块。当前 validation flow：
 3. Old `.doc` is not supported。
 4. User can upload problem and standard answer separately。
 5. User can upload one combined file containing both。
-6. System extracts text。
-7. User confirms or edits `problem_text`、`diagram_notes`、`standard_answer`。
-8. AI analysis can only run after confirmed standard answer exists。
-9. AI returns fixed structured sections。
+6. Gemini/OpenRouter directly receives supported multimodal problem and answer materials for analysis。
+7. AI analysis can only run after problem material and standard-answer material both exist。
+8. AI returns fixed structured sections。
 
 Fixed sections：
 

@@ -4,8 +4,10 @@ import type {
   AiSolverConfirmationInput,
   AiSolverCreateMessageInput,
   AiSolverImageContextMetadata,
+  AiSolverMaterialContextMetadata,
   AiSolverMessage,
   AiSolverProviderImageContext,
+  AiSolverProviderMaterialContext,
   AiSolverSession,
   ExtractedMaterial,
   MaterialRole,
@@ -18,6 +20,7 @@ type Store = {
   uploads: Map<string, UploadedMaterial>;
   extractions: Map<string, ExtractedMaterial>;
   imageContents: Map<string, string>;
+  materialContents: Map<string, string>;
   analysisResults: Map<string, AiSolverAnalysisResult>;
   messages: Map<string, AiSolverMessage>;
 };
@@ -33,11 +36,13 @@ export const store =
     uploads: new Map<string, UploadedMaterial>(),
     extractions: new Map<string, ExtractedMaterial>(),
     imageContents: new Map<string, string>(),
+    materialContents: new Map<string, string>(),
     analysisResults: new Map<string, AiSolverAnalysisResult>(),
     messages: new Map<string, AiSolverMessage>(),
   });
 
 store.imageContents ??= new Map<string, string>();
+store.materialContents ??= new Map<string, string>();
 store.analysisResults ??= new Map<string, AiSolverAnalysisResult>();
 store.messages ??= new Map<string, AiSolverMessage>();
 
@@ -74,10 +79,10 @@ export function addUploadedMaterial(input: {
   fileName: string;
   mimeType: string;
   sizeBytes: number;
-  imageDataUrl?: string;
+  providerDataUrl?: string;
 }) {
   requireOwnedSession(input.sessionId, input.userId);
-  validateImageContentInput(input);
+  validateProviderContentInput(input);
 
   const now = new Date().toISOString();
   const uploadId = crypto.randomUUID();
@@ -97,8 +102,13 @@ export function addUploadedMaterial(input: {
 
   if (input.kind === "image") {
     upload.imageContext = toImageContextMetadata(upload, now);
-    if (input.imageDataUrl) {
-      store.imageContents.set(upload.id, input.imageDataUrl);
+  }
+
+  if (input.providerDataUrl) {
+    upload.providerContext = toMaterialContextMetadata(upload, now);
+    store.materialContents.set(upload.id, input.providerDataUrl);
+    if (input.kind === "image") {
+      store.imageContents.set(upload.id, input.providerDataUrl);
     }
   }
 
@@ -162,6 +172,22 @@ export function collectProviderSafeImageContexts(sessionId: string, userId: stri
   });
 }
 
+export function collectProviderSafeMaterialContexts(
+  sessionId: string,
+  userId: string,
+): AiSolverProviderMaterialContext[] {
+  const uploads = getOwnedUploads(sessionId, userId);
+
+  return uploads.flatMap((upload) => {
+    const dataUrl = store.materialContents.get(upload.id);
+    if (!upload.providerContext || !dataUrl) {
+      return [];
+    }
+
+    return [{ ...upload.providerContext, dataUrl, kind: upload.kind }];
+  });
+}
+
 export function confirmExtraction(input: AiSolverConfirmationInput, userId: string) {
   const session = requireOwnedSession(input.sessionId, userId);
   const now = new Date().toISOString();
@@ -192,15 +218,17 @@ export function confirmExtraction(input: AiSolverConfirmationInput, userId: stri
 
 export function assertAnalysisGate(sessionId: string, userId: string) {
   requireOwnedSession(sessionId, userId);
-  const extraction = store.extractions.get(sessionId);
+  const uploads = getOwnedUploads(sessionId, userId);
+  const hasCombinedMaterial = uploads.some((upload) => upload.role === "combined");
+  const hasProblemMaterial = hasCombinedMaterial || uploads.some((upload) => upload.role === "problem");
+  const hasAnswerMaterial = hasCombinedMaterial || uploads.some((upload) => upload.role === "answer");
 
-  if (
-    !extraction ||
-    extraction.userId !== userId ||
-    !extraction.isStandardAnswerConfirmed ||
-    extraction.standardAnswer.trim().length === 0
-  ) {
-    throw new Error("No standard answer, no AI solution. Confirm a non-empty standard answer before analysis.");
+  if (!hasProblemMaterial) {
+    throw new Error("Upload problem material before AI analysis.");
+  }
+
+  if (!hasAnswerMaterial) {
+    throw new Error("No standard answer, no AI solution. Upload standard-answer material before analysis.");
   }
 
   return {
@@ -308,11 +336,11 @@ function upsertExtractionPlaceholder(sessionId: string, userId: string) {
     id: crypto.randomUUID(),
     sessionId,
     userId,
-    problemText: "",
-    diagramNotes: "Extraction is not connected yet. Confirm or edit diagram notes manually.",
-    standardAnswer: "",
+    problemText: "Problem content is provided by uploaded multimodal materials.",
+    diagramNotes: "Diagram context is provided by uploaded multimodal materials when present.",
+    standardAnswer: "Standard answer is provided by uploaded answer materials.",
     extractionStatus: "not_connected",
-    isStandardAnswerConfirmed: false,
+    isStandardAnswerConfirmed: true,
     createdAt: now,
     updatedAt: now,
   });
@@ -336,26 +364,39 @@ function toImageContextMetadata(upload: UploadedMaterial, createdAt: string): Ai
   };
 }
 
-function validateImageContentInput(input: {
+function toMaterialContextMetadata(upload: UploadedMaterial, createdAt: string): AiSolverMaterialContextMetadata {
+  return {
+    uploadId: upload.id,
+    sessionId: upload.sessionId,
+    userId: upload.userId,
+    role: upload.role,
+    mimeType: upload.mimeType,
+    fileName: upload.fileName,
+    sizeBytes: upload.sizeBytes,
+    storagePath: upload.storagePath,
+    createdAt,
+  };
+}
+
+function validateProviderContentInput(input: {
   kind: UploadedMaterialKind;
   mimeType: string;
   sizeBytes: number;
-  imageDataUrl?: string;
+  providerDataUrl?: string;
 }) {
-  if (input.kind !== "image") {
-    if (input.imageDataUrl) {
-      throw new Error("Only image uploads can include provider-bound image context.");
+  if (input.kind === "docx") {
+    if (input.providerDataUrl) {
+      throw new Error("DOCX uploads do not include provider-bound multimodal context.");
     }
-
     return;
   }
 
-  if (input.sizeBytes > AI_SOLVER_LIMITS.maxImageSizeBytes) {
+  if (input.kind === "image" && input.sizeBytes > AI_SOLVER_LIMITS.maxImageSizeBytes) {
     throw new Error("Each image must be 10 MB or smaller.");
   }
 
-  if (input.imageDataUrl && !input.imageDataUrl.startsWith(`data:${input.mimeType};base64,`)) {
-    throw new Error("Image context must match the uploaded image MIME type.");
+  if (input.providerDataUrl && !input.providerDataUrl.startsWith(`data:${input.mimeType};base64,`)) {
+    throw new Error("Provider material context must match the uploaded MIME type.");
   }
 }
 
