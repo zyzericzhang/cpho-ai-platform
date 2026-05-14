@@ -67,7 +67,7 @@ export const modules: ModuleConfig[] = [
     description: "上传题目与标准答案，确认文本后生成结构化竞赛解析。",
     eyebrow: "AI 解题器 / 当前会话",
     primaryAction: "运行结构化解析",
-    secondaryAction: "编辑提取文本",
+    secondaryAction: "重新选择材料",
     sidebar: [
       { label: "新建解析" },
       { label: "解析会话" },

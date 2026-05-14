@@ -15,7 +15,9 @@ const formSchema = z.object({
   standardAnswer: z.string().min(10, '标准答案至少需要10个字符'),
   category: z.string().optional(),
   topics: z.string().optional(),
-  paperPdf: z.instanceof(FileList).optional(),
+  status: z.enum(['draft', 'published', 'archived']),
+  paperPdf: z.custom<FileList>().optional(),
+  answerPdf: z.custom<FileList>().optional(),
 });
 
 type FormSchema = z.infer<typeof formSchema>;
@@ -33,6 +35,7 @@ export function ProblemForm() {
       standardAnswer: '',
       category: '',
       topics: '',
+      status: 'published',
     },
   });
 
@@ -41,7 +44,7 @@ export function ProblemForm() {
 
     Object.entries(values).forEach(([key, value]) => {
       if (value) {
-        if (key === 'paperPdf' && (value as FileList).length > 0) {
+        if ((key === 'paperPdf' || key === 'answerPdf') && (value as FileList).length > 0) {
           formData.append(key, (value as FileList)[0]);
         } else if (typeof value === 'string') {
           formData.append(key, value);
@@ -70,8 +73,6 @@ export function ProblemForm() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <fieldset className="border border-gray-700 p-4 rounded-md">
           <legend className="text-lg font-semibold px-2">试卷信息</legend>
-...
-
           <div className="space-y-4">
             <div>
               <label htmlFor="paperTitle" className={labelStyles}>试卷标题</label>
@@ -81,7 +82,12 @@ export function ProblemForm() {
             
             <div>
               <label htmlFor="paperPdf" className={labelStyles}>上传试卷 PDF</label>
-              <input id="paperPdf" type="file" {...form.register('paperPdf')} className={`${inputStyles} file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-500 file:text-white hover:file:bg-indigo-600`} />
+              <input id="paperPdf" type="file" accept="application/pdf,.pdf" {...form.register('paperPdf')} className={`${inputStyles} file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-500 file:text-white hover:file:bg-indigo-600`} />
+            </div>
+
+            <div>
+              <label htmlFor="answerPdf" className={labelStyles}>上传答案 PDF</label>
+              <input id="answerPdf" type="file" accept="application/pdf,.pdf" {...form.register('answerPdf')} className={`${inputStyles} file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-500 file:text-white hover:file:bg-indigo-600`} />
             </div>
             
             <div>
@@ -125,6 +131,15 @@ export function ProblemForm() {
             <div>
               <label htmlFor="topics" className={labelStyles}>知识点 (逗号分隔)</label>
               <input id="topics" {...form.register('topics')} className={inputStyles} />
+            </div>
+
+            <div>
+              <label htmlFor="status" className={labelStyles}>发布状态</label>
+              <select id="status" {...form.register('status')} className={inputStyles}>
+                <option value="draft">草稿</option>
+                <option value="published">已发布</option>
+                <option value="archived">已归档</option>
+              </select>
             </div>
           </div>
         </fieldset>

@@ -13,6 +13,7 @@ export type UploadedMaterial = {
   sizeBytes: number;
   storagePath: string;
   imageContext?: AiSolverImageContextMetadata;
+  providerContext?: AiSolverMaterialContextMetadata;
   createdAt: string;
 };
 
@@ -30,6 +31,23 @@ export type AiSolverImageContextMetadata = {
 
 export type AiSolverProviderImageContext = AiSolverImageContextMetadata & {
   dataUrl: string;
+};
+
+export type AiSolverMaterialContextMetadata = {
+  uploadId: string;
+  sessionId: string;
+  userId: string;
+  role: MaterialRole;
+  mimeType: string;
+  fileName: string;
+  sizeBytes: number;
+  storagePath: string;
+  createdAt: string;
+};
+
+export type AiSolverProviderMaterialContext = AiSolverMaterialContextMetadata & {
+  dataUrl: string;
+  kind: UploadedMaterialKind;
 };
 
 export type AiSolverSession = {
@@ -156,6 +174,7 @@ export type AiSolverAnalysisInput = {
   diagramNotes: string;
   standardAnswer: string;
   images?: AiSolverImageContext[];
+  materials?: AiSolverProviderMaterialContext[];
   retrieval?: AiSolverRetrievalContext;
 };
 

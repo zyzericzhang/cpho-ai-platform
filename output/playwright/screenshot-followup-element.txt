@@ -1,0 +1,11 @@
+### Result
+- [Screenshot of element](.playwright-cli/element-2026-05-12T16-16-28-651Z.png)
+### Ran Playwright code
+```js
+// Screenshot element and save it as .playwright-cli/element-2026-05-12T16-16-28-651Z.png
+await page.getByText('学生回复请用两句话概括第 1 题的建模核心。AI').screenshot({
+  path: '.playwright-cli/element-2026-05-12T16-16-28-651Z.png',
+  scale: 'css',
+  type: 'png'
+});
+```

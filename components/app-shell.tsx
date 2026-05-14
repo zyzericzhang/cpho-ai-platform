@@ -2,6 +2,7 @@
 
 import { type User } from "@supabase/supabase-js";
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   articles,
   libraryGroups,
@@ -69,13 +70,14 @@ const materialRoleLabels: Record<string, string> = {
 };
 
 export function AppShell() {
+  const router = useRouter();
   const [activeModule, setActiveModule] = useState<ModuleId>("solver");
   const [shellState, setShellState] = useState<ShellState>("ready");
   const [role, setRole] = useState<Role>("student");
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [user, setUser] = useState<User | null>(null);
 
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     const getUser = async () => {
@@ -115,8 +117,8 @@ export function AppShell() {
     return () => subscription.unsubscribe();
   }, [supabase]);
 
-  const handleLogin = async () => {
-    alert("In a real app, this would redirect to /login or open an auth modal.");
+  const handleLogin = () => {
+    router.push("/login");
   };
 
   const handleLogout = async () => {
@@ -443,15 +445,13 @@ function WorkflowPanel({ active, role, compact = false }: { active: ModuleConfig
 
 function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
   const [sessionId, setSessionId] = useState("");
-  const [materialRole, setMaterialRole] = useState("combined");
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [uploadedFiles, setUploadedFiles] = useState<Array<{ fileName: string; kind: string; sizeBytes: number }>>([]);
-  const [problemText, setProblemText] = useState("");
-  const [diagramNotes, setDiagramNotes] = useState("");
-  const [standardAnswer, setStandardAnswer] = useState("");
-  const [confirmStandardAnswer, setConfirmStandardAnswer] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("请先上传题目材料，再确认或编辑抽取字段。");
-  const [analysisMessage, setAnalysisMessage] = useState("没有已确认的标准答案，不能生成 AI 解析。");
+  const [selectedProblemFiles, setSelectedProblemFiles] = useState<File[]>([]);
+  const [selectedAnswerFiles, setSelectedAnswerFiles] = useState<File[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<
+    Array<{ fileName: string; kind: string; sizeBytes: number; role: "problem" | "answer" | "combined" }>
+  >([]);
+  const [statusMessage, setStatusMessage] = useState("请同时选择题目材料和标准答案材料，再由服务器完成校验。");
+  const [analysisMessage, setAnalysisMessage] = useState("没有已上传的标准答案材料，不能生成 AI 解析。");
   const [analysis, setAnalysis] = useState<AnalysisPayload | null>(null);
   const [selectedContext, setSelectedContext] = useState<FollowUpContext>({ type: "whole_analysis" });
   const [selectionDraft, setSelectionDraft] = useState<Extract<FollowUpContext, { type: "selected_text" }> | null>(null);
@@ -461,7 +461,9 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
   const [followUpMessage, setFollowUpMessage] = useState("追问会附着在本次解析会话中，不会覆盖原解析。");
   const [isBusy, setIsBusy] = useState(false);
 
-  const hasConfirmedAnswer = confirmStandardAnswer && standardAnswer.trim().length > 0;
+  const hasProblemUpload = uploadedFiles.some((file) => file.role === "problem" || file.role === "combined");
+  const hasAnswerUpload = uploadedFiles.some((file) => file.role === "answer" || file.role === "combined");
+  const hasRequiredMaterials = hasProblemUpload && hasAnswerUpload;
 
   const createSessionIfNeeded = async () => {
     if (sessionId) {
@@ -500,33 +502,47 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
     }
   };
 
+  const uploadRole = async (nextSessionId: string, role: "problem" | "answer", files: File[]) => {
+    const formData = new FormData();
+    formData.set("sessionId", nextSessionId);
+    formData.set("role", role);
+    files.forEach((file) => formData.append("files", file));
+
+    const response = await fetch("/api/ai-solver/uploads", {
+      method: "POST",
+      body: formData,
+    });
+    const payload = await response.json();
+
+    if (!response.ok) {
+      throw new Error(toChineseSolverError(payload.error, "上传校验失败。"));
+    }
+
+    return (payload.uploads ?? []) as Array<{
+      fileName: string;
+      kind: string;
+      sizeBytes: number;
+      role: "problem" | "answer" | "combined";
+    }>;
+  };
+
   const handleUpload = async () => {
     setIsBusy(true);
-    setStatusMessage("正在由服务器校验上传材料...");
+    setStatusMessage("正在由服务器校验题目材料和标准答案材料...");
 
     try {
-      const nextSessionId = await createSessionIfNeeded();
-      const formData = new FormData();
-      formData.set("sessionId", nextSessionId);
-      formData.set("role", materialRole);
-      selectedFiles.forEach((file) => formData.append("files", file));
-
-      const response = await fetch("/api/ai-solver/uploads", {
-        method: "POST",
-        body: formData,
-      });
-      const payload = await response.json();
-
-      if (!response.ok) {
-        throw new Error(toChineseSolverError(payload.error, "上传校验失败。"));
+      if (selectedProblemFiles.length === 0 || selectedAnswerFiles.length === 0) {
+        throw new Error("题目材料和标准答案材料都必须选择。");
       }
 
-      setUploadedFiles(payload.uploads);
-      setStatusMessage(`已接收 ${payload.uploads.length} 个文件。文本抽取暂未接入，请手动填写并确认下方字段。`);
-      setProblemText("");
-      setDiagramNotes("");
-      setStandardAnswer("");
-      setConfirmStandardAnswer(false);
+      const nextSessionId = await createSessionIfNeeded();
+      const problemUploads = await uploadRole(nextSessionId, "problem", selectedProblemFiles);
+      const answerUploads = await uploadRole(nextSessionId, "answer", selectedAnswerFiles);
+      const nextUploads = [...problemUploads, ...answerUploads];
+
+      setUploadedFiles(nextUploads);
+      setStatusMessage(`已接收 ${nextUploads.length} 个文件。Gemini 将直接读取题目与标准答案材料。`);
+      setAnalysisMessage("题目材料和标准答案材料已就绪，可以运行结构化解析。");
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : "上传失败。");
     } finally {
@@ -534,68 +550,17 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
     }
   };
 
-  const handleConfirm = async () => {
-    setIsBusy(true);
-
-    try {
-      const nextSessionId = await createSessionIfNeeded();
-      const response = await fetch("/api/ai-solver/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId: nextSessionId,
-          problemText,
-          diagramNotes,
-          standardAnswer,
-          confirmStandardAnswer,
-        }),
-      });
-      const payload = await response.json();
-
-      if (!response.ok) {
-        throw new Error(toChineseSolverError(payload.error, "确认失败。"));
-      }
-
-      setStatusMessage(
-        payload.extraction.isStandardAnswerConfirmed
-          ? "标准答案已确认；服务器校验通过后才能进入结构化解析。"
-          : "字段已保存，但标准答案尚未确认。",
-      );
-    } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : "确认失败。");
-    } finally {
-      setIsBusy(false);
-    }
-  };
-
   const handleAnalyze = async () => {
     setIsBusy(true);
-    setAnalysisMessage("正在保存确认字段，然后启动解析...");
+    setAnalysisMessage("正在校验双材料门禁，然后启动结构化解析...");
 
     try {
       const nextSessionId = await createSessionIfNeeded();
-      const confirmResponse = await fetch("/api/ai-solver/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId: nextSessionId,
-          problemText,
-          diagramNotes,
-          standardAnswer,
-          confirmStandardAnswer,
-        }),
-      });
-      const confirmPayload = await confirmResponse.json();
-
-      if (!confirmResponse.ok) {
-        throw new Error(toChineseSolverError(confirmPayload.error, "确认失败。"));
+      if (!hasRequiredMaterials) {
+        throw new Error("请先完成题目材料和标准答案材料上传，再运行 AI 解析。");
       }
 
-      if (!confirmPayload.extraction?.isStandardAnswerConfirmed) {
-        throw new Error("请先确认非空标准答案，再运行 AI 解析。");
-      }
-
-      setStatusMessage("标准答案已确认，正在运行结构化解析...");
+      setStatusMessage("双材料门禁已满足，正在运行结构化解析...");
       const response = await fetch("/api/ai-solver/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -693,31 +658,30 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
       <section className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-zinc-100">1. 上传材料</h2>
-          <span className="text-xs text-zinc-500">服务器校验</span>
+          <span className="text-xs text-zinc-500">题目 + 标准答案双材料门禁</span>
         </div>
-        <div className="grid grid-cols-[180px_minmax(0,1fr)_auto] gap-3 max-[900px]:grid-cols-1">
-          <select
-            value={materialRole}
-            onChange={(event) => setMaterialRole(event.target.value)}
-            className="h-10 min-w-0 rounded-md border border-zinc-800 bg-[#0b0f12] px-3 text-sm text-zinc-100 outline-none max-[900px]:w-full"
-          >
-            <option value="combined">题目与标准答案</option>
-            <option value="problem">题目</option>
-            <option value="answer">标准答案</option>
-          </select>
-          <input
-            type="file"
-            multiple
-            accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx"
-            onChange={(event) => setSelectedFiles(Array.from(event.target.files ?? []))}
-            className="h-10 min-w-0 rounded-md border border-zinc-800 bg-[#0b0f12] px-3 py-2 text-sm text-zinc-300 file:mr-3 file:rounded file:border-0 file:bg-zinc-800 file:px-2 file:py-1 file:text-xs file:text-zinc-100 max-[900px]:w-full"
+        <div className="grid grid-cols-2 gap-3 max-[900px]:grid-cols-1">
+          <MaterialFileInput
+            title="题目材料"
+            description="上传题面 PDF 或图片。"
+            onChange={setSelectedProblemFiles}
           />
+          <MaterialFileInput
+            title="标准答案材料"
+            description="必须上传答案 PDF 或图片，否则服务端拒绝解析。"
+            onChange={setSelectedAnswerFiles}
+          />
+        </div>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-zinc-500">
+            支持格式：图片、PDF、DOCX。不支持旧版 .doc；当前 Gemini 直读链路优先使用 PDF 或图片。
+          </p>
           <button
             onClick={handleUpload}
             disabled={isBusy}
             className="h-10 min-w-0 rounded-md border border-zinc-700 bg-zinc-100 px-3 text-sm font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50 max-[900px]:w-full"
           >
-            上传
+            提交题目和答案
           </button>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-3 max-[900px]:grid-cols-1">
@@ -725,7 +689,7 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
             uploadedFiles.map((file) => (
               <FileCard
                 key={file.fileName}
-                title={`${materialRoleLabels[materialRole] ?? "材料"}材料`}
+                title={`${materialRoleLabels[file.role] ?? "材料"}材料`}
                 fileName={file.fileName}
                 status={`${file.kind.toUpperCase()} / ${formatBytes(file.sizeBytes)}`}
               />
@@ -733,68 +697,23 @@ function SolverPanel({ active, role }: { active: ModuleConfig; role: Role }) {
           ) : (
             <Notice
               title="本会话尚未上传材料"
-              body="请上传真实题目材料；服务器会校验文件数量、MIME、扩展名和大小。"
+              body="请同时提交真实题目材料和标准答案材料；服务器会校验数量、MIME、扩展名和大小。"
             />
           )}
         </div>
         <p className="mt-3 text-xs text-zinc-400">{statusMessage}</p>
-        <p className="mt-3 text-xs text-zinc-500">支持格式：图片、PDF、DOCX。不支持旧版 .doc。</p>
-      </section>
-      <section className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-zinc-100">2. 确认与编辑抽取文本</h2>
-          <span className="text-xs text-amber-300">真实文本抽取未接入</span>
-        </div>
-        <div className="grid grid-cols-3 gap-3 max-[1120px]:grid-cols-1">
-          <ExtractedTextCard
-            title="题目文本"
-            body={problemText}
-            onChange={setProblemText}
-            placeholder="真实文本抽取未接入。请在上传后手动填写题目文本。"
-          />
-          <ExtractedTextCard
-            title="图像/图示说明"
-            body={diagramNotes}
-            onChange={setDiagramNotes}
-            placeholder="如题目含图，请手动填写关键图示、坐标、方向和约束信息。"
-          />
-          <ExtractedTextCard
-            title="标准答案"
-            body={standardAnswer}
-            onChange={setStandardAnswer}
-            placeholder="必须填写并确认标准答案；没有标准答案不能运行 AI 解析。"
-          />
-        </div>
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <label className="flex items-center gap-2 text-sm text-zinc-300">
-            <input
-              type="checkbox"
-              checked={confirmStandardAnswer}
-              onChange={(event) => setConfirmStandardAnswer(event.target.checked)}
-              className="h-4 w-4 accent-zinc-100"
-            />
-            确认标准答案
-          </label>
-          <button
-            onClick={handleConfirm}
-            disabled={isBusy}
-            className="h-9 rounded-md border border-zinc-700 bg-zinc-100 px-3 text-sm font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            保存确认
-          </button>
-        </div>
       </section>
       <section className="rounded-lg border border-zinc-800 bg-zinc-950/55 p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold">3. AI 解析</h2>
+            <h2 className="text-sm font-semibold">2. AI 解析</h2>
             <p className="mt-1 text-xs text-zinc-500">固定七个解析区块，追问附着在当前会话</p>
           </div>
           <button
             onClick={handleAnalyze}
-            disabled={isBusy || !hasConfirmedAnswer}
+            disabled={isBusy || !hasRequiredMaterials}
             className="h-9 rounded-md border border-zinc-700 bg-zinc-100 px-3 text-sm font-medium text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50"
-            title={!hasConfirmedAnswer ? "请先确认非空标准答案" : "运行结构化解析"}
+            title={!hasRequiredMaterials ? "请先提交题目材料和标准答案材料" : "运行结构化解析"}
           >
             {isBusy ? "解析中..." : "运行结构化解析"}
           </button>
@@ -1339,8 +1258,16 @@ function toChineseSolverError(error: unknown, fallback: string) {
     return "文件类型不支持，请使用图片、PDF 或 DOCX。";
   }
 
-  if (message.includes("No standard answer, no AI solution") || message.includes("Confirm a non-empty standard answer")) {
-    return "没有已确认的非空标准答案，不能生成 AI 解析。";
+  if (message.includes("题目材料和标准答案材料都必须选择")) {
+    return message;
+  }
+
+  if (message.includes("Upload problem material")) {
+    return "请先上传题目材料。";
+  }
+
+  if (message.includes("No standard answer, no AI solution") || message.includes("Upload standard-answer material")) {
+    return "没有已上传的标准答案材料，不能生成 AI 解析。";
   }
 
   if (message.includes("Run structured analysis before follow-up")) {
@@ -1397,7 +1324,7 @@ function getModuleCopy(active: ModuleConfig) {
   if (active.id === "solver") {
     return {
       title: active.title,
-      description: "上传材料并确认标准答案；否则不会生成解析。",
+      description: "同时上传题目材料和标准答案材料；否则不会生成解析。",
       eyebrow: active.eyebrow,
       primaryAction: active.primaryAction,
       secondaryAction: active.secondaryAction,
@@ -1477,10 +1404,10 @@ function getShellStateLabel(state: ShellState) {
 function getStateCopy(moduleId: ModuleId, state: ShellState) {
   if (moduleId === "solver") {
     const solverCopy: Record<ShellState, { title: string; body: string }> = {
-      ready: { title: "AI 解题器已就绪", body: "请上传真实题目材料，确认题目文本、图示说明和标准答案后再运行解析。" },
+      ready: { title: "AI 解题器已就绪", body: "请上传真实题目材料和标准答案材料；Gemini 会直接读取多模态文件。" },
       loading: { title: "正在加载解题工作区", body: "正在准备 AI 解题器会话状态。" },
-      empty: { title: "暂无解题材料", body: "请上传真实题目材料；不会预置或展示假题目内容。" },
-      error: { title: "解题会话出错", body: "请检查上传材料、确认字段和标准答案状态后重试。" },
+      empty: { title: "暂无解题材料", body: "请上传真实题目材料和标准答案材料；不会预置或展示假题目内容。" },
+      error: { title: "解题会话出错", body: "请检查上传材料和标准答案材料状态后重试。" },
       permission: {
         title: "权限不足",
         body: "当前角色不能执行该操作；最终权限仍由服务器端校验决定。",
@@ -1513,28 +1440,28 @@ function getStateCopy(moduleId: ModuleId, state: ShellState) {
   return copy[state];
 }
 
-function ExtractedTextCard({
+function MaterialFileInput({
   title,
-  body,
+  description,
   onChange,
-  placeholder,
 }: {
   title: string;
-  body: string;
-  onChange: (value: string) => void;
-  placeholder: string;
+  description: string;
+  onChange: (files: File[]) => void;
 }) {
   return (
-    <article className="min-h-[210px] rounded-md border border-zinc-800 bg-[#0b0f12] p-3">
+    <article className="rounded-md border border-zinc-800 bg-[#0b0f12] p-3">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-zinc-100">{title}</h3>
-        <span className="text-xs text-zinc-500">可编辑</span>
+        <span className="text-xs text-zinc-500">必填</span>
       </div>
-      <textarea
-        value={body}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        className="h-[158px] w-full resize-none rounded border border-zinc-800 bg-zinc-950 p-3 text-sm leading-6 text-zinc-300 outline-none placeholder:text-zinc-600"
+      <p className="mb-3 text-xs leading-5 text-zinc-500">{description}</p>
+      <input
+        type="file"
+        multiple
+        accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx"
+        onChange={(event) => onChange(Array.from(event.target.files ?? []))}
+        className="h-10 w-full min-w-0 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300 file:mr-3 file:rounded file:border-0 file:bg-zinc-800 file:px-2 file:py-1 file:text-xs file:text-zinc-100"
       />
     </article>
   );
@@ -1930,9 +1857,9 @@ function RightPanel({
                 ["数据", getRealProblemRecords().length > 0 ? "等待选择真实题目" : "未接入真实题库数据"],
               ]
           : [
-              ["材料状态", "等待真实上传"],
-              ["文本抽取", "真实抽取未接入"],
-              ["标准答案", "未确认"],
+              ["材料状态", "以主面板的真实上传结果为准"],
+              ["输入方式", "Gemini 直接读取 PDF / 图片"],
+              ["标准答案门禁", "由服务端检查答案材料是否存在"],
               ["会话状态", getChineseShellState(shellState)],
             ];
 
@@ -1992,7 +1919,7 @@ function RightPanel({
       </section>
       <p className="px-1 text-xs leading-5 text-zinc-500">
         {active.id === "solver"
-          ? "AI Solver 的标准答案门禁和上传校验由服务器执行；文本抽取、持久化接线和后续能力按阶段接入。"
+          ? "AI Solver 的双材料门禁和上传校验由服务器执行；持久化接线和后续能力按阶段接入。"
           : "前端禁用只是可用性提示。公共题库写操作、个人资料归属和公开文章权限必须由服务端检查并配合 RLS 执行。"}
       </p>
     </aside>

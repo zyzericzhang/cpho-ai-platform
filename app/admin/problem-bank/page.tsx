@@ -3,7 +3,7 @@ import { ProblemForm } from './problem-form';
 import { DeleteButton } from './delete-button';
 import Link from 'next/link';
 import { Search } from 'lucide-react';
-import { Problem } from '@/lib/problem-bank/types';
+import type { AdminProblemSummary } from '@/lib/problem-bank/types';
 
 export default async function ProblemBankAdminPage({
   searchParams,
@@ -12,7 +12,9 @@ export default async function ProblemBankAdminPage({
 }) {
   const resolvedSearchParams = await searchParams;
   const query = resolvedSearchParams.q;
-  const { problems, error } = await getAdminProblems(query) as { problems: Problem[] | null, error: string | null };
+  const result = await getAdminProblems(query);
+  const problems = 'problems' in result ? result.problems : null;
+  const error = 'error' in result ? result.error : null;
 
   return (
     <div className="container mx-auto p-4 text-white">
@@ -44,12 +46,13 @@ export default async function ProblemBankAdminPage({
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">题目名称</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">试卷 / 机构</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">分类</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">状态</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">创建时间</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800">
-                {problems?.map((problem: Problem) => (
+                {problems?.map((problem: AdminProblemSummary) => (
                   <tr key={problem.id} className="hover:bg-gray-800/30 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-indigo-400">{problem.title}</div>
@@ -65,6 +68,11 @@ export default async function ProblemBankAdminPage({
                         </span>
                       )}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="px-2 py-0.5 text-xs font-medium bg-gray-700 text-gray-300 rounded-full">
+                        {problem.status === 'draft' ? '草稿' : problem.status === 'archived' ? '已归档' : '已发布'}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(problem.created_at).toLocaleDateString('zh-CN')}
                     </td>
@@ -78,7 +86,7 @@ export default async function ProblemBankAdminPage({
                 ))}
                 {(!problems || problems.length === 0) && (
                   <tr>
-                    <td colSpan={5} className="px-6 py-10 text-center text-gray-500">
+                    <td colSpan={6} className="px-6 py-10 text-center text-gray-500">
                       未找到相关题目
                     </td>
                   </tr>

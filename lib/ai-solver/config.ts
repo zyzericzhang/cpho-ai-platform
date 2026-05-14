@@ -4,9 +4,9 @@ export const DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 export const DEFAULT_OPENROUTER_MODEL = "google/gemini-3.1-pro-preview";
 
 export const AI_SOLVER_PROVIDER_LIMITS = {
-  maxAnalysisSubtasks: 4,
+  maxAnalysisSubtasks: 7,
   maxFollowUpTokens: 1400,
-  requestTimeoutMs: 60_000,
+  requestTimeoutMs: 180_000,
 };
 
 export function getOpenRouterConfig() {

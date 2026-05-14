@@ -22,7 +22,8 @@ export default async function ProblemDetailPage({ params }: ProblemDetailPagePro
       *,
       papers (
         *,
-        source_pdf_storage_path
+        source_pdf_storage_path,
+        answer_pdf_storage_path
       )
     `)
     .eq('id', resolvedParams.id)
@@ -39,18 +40,25 @@ export default async function ProblemDetailPage({ params }: ProblemDetailPagePro
     .from('personal_library_items')
     .select('id')
     .eq('user_id', user.id)
-    .eq('item_id', params.id)
+    .eq('item_id', resolvedParams.id)
     .eq('item_type', 'problem')
     .single() : { data: null };
 
   const isAlreadyInLibrary = !!libraryItem;
 
-  let publicPdfUrl = null;
+  let signedPdfUrl = null;
+  let signedAnswerPdfUrl = null;
   if (problem.papers?.source_pdf_storage_path) {
-    const { data } = supabase.storage
+    const { data } = await supabase.storage
       .from('problem-bank-papers')
-      .getPublicUrl(problem.papers.source_pdf_storage_path);
-    publicPdfUrl = data.publicUrl;
+      .createSignedUrl(problem.papers.source_pdf_storage_path, 60 * 10);
+    signedPdfUrl = data?.signedUrl ?? null;
+  }
+  if (problem.papers?.answer_pdf_storage_path) {
+    const { data } = await supabase.storage
+      .from('problem-bank-papers')
+      .createSignedUrl(problem.papers.answer_pdf_storage_path, 60 * 10);
+    signedAnswerPdfUrl = data?.signedUrl ?? null;
   }
   
   return (
@@ -124,9 +132,14 @@ export default async function ProblemDetailPage({ params }: ProblemDetailPagePro
                     <h3 className="text-lg font-semibold mb-4">相关试卷</h3>
                     <p className="text-gray-300">{problem.papers.title}</p>
                     <p className="text-sm text-gray-400">{problem.papers.organization}</p>
-                    {publicPdfUrl && (
-                        <a href={publicPdfUrl} target="_blank" rel="noopener noreferrer" className="block w-full text-center mt-4 px-4 py-2 border border-indigo-500 text-indigo-400 font-semibold rounded-md hover:bg-indigo-500 hover:text-white transition-colors">
+                    {signedPdfUrl && (
+                        <a href={signedPdfUrl} target="_blank" rel="noopener noreferrer" className="block w-full text-center mt-4 px-4 py-2 border border-indigo-500 text-indigo-400 font-semibold rounded-md hover:bg-indigo-500 hover:text-white transition-colors">
                             查看试卷 PDF
+                        </a>
+                    )}
+                    {signedAnswerPdfUrl && (
+                        <a href={signedAnswerPdfUrl} target="_blank" rel="noopener noreferrer" className="block w-full text-center mt-3 px-4 py-2 border border-zinc-600 text-zinc-200 font-semibold rounded-md hover:bg-zinc-700 transition-colors">
+                            查看答案 PDF
                         </a>
                     )}
                 </div>

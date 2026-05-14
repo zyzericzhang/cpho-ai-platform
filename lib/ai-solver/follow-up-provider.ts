@@ -58,12 +58,24 @@ export async function runAiSolverFollowUp(input: RunFollowUpInput): Promise<Foll
             ...buildAiSolverUserContent(input.analysisInput),
             {
               type: "text",
-              text: buildFollowUpPrompt(input),
+              text: `${buildFollowUpPrompt(input)}\n\nReturn exactly one JSON object with an answer string. Do not use Markdown fences or any preamble.`,
             },
           ],
         },
       ],
       maxTokens: Math.min(1400, AI_SOLVER_PROVIDER_LIMITS.maxFollowUpTokens),
+      responseFormat: { type: "json_object" },
+      plugins: [
+        {
+          id: "file-parser",
+          pdf: {
+            engine: "native",
+          },
+        },
+        {
+          id: "response-healing",
+        },
+      ],
     });
     const parsed = parseProviderJson(raw);
     const answer = getAnswer(parsed);

@@ -19,6 +19,12 @@ export type OpenRouterChatCompletionOptions = {
   messages: OpenAiCompatibleMessage[];
   temperature?: number;
   maxTokens?: number;
+  responseFormat?: Record<string, unknown>;
+  plugins?: Array<Record<string, unknown>>;
+  reasoning?: {
+    effort: "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
+    exclude?: boolean;
+  };
   signal?: AbortSignal;
 };
 
@@ -78,7 +84,9 @@ export class OpenRouterChatCompletionClient {
           messages: options.messages,
           temperature: options.temperature ?? 0.2,
           max_tokens: options.maxTokens ?? 1800,
-          response_format: { type: "json_object" },
+          response_format: options.responseFormat ?? { type: "json_object" },
+          reasoning: options.reasoning ?? { effort: "minimal", exclude: true },
+          ...(options.plugins ? { plugins: options.plugins } : {}),
         }),
         signal,
       });

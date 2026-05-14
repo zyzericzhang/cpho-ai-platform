@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   assertAnalysisGate,
-  collectProviderSafeImageContexts,
+  collectProviderSafeMaterialContexts,
   getOwnedExtraction,
   persistAnalysisResult,
 } from "@/lib/ai-solver/local-store";
 import { runAiSolverAnalysis, toSafeProviderError } from "@/lib/ai-solver/provider-orchestration";
 import { getRequestUserId } from "@/lib/ai-solver/request-auth";
-import type { AiSolverAnalysisResult, AiSolverImageContext } from "@/lib/ai-solver/types";
+import type { AiSolverAnalysisResult } from "@/lib/ai-solver/types";
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,12 +20,12 @@ export async function POST(request: NextRequest) {
 
     const gate = assertAnalysisGate(body.sessionId, userId);
     const extraction = getOwnedExtraction(body.sessionId, userId);
-    const imageContexts = collectProviderSafeImageContexts(body.sessionId, userId);
+    const materials = collectProviderSafeMaterialContexts(body.sessionId, userId);
     const analysis = await runAiSolverAnalysis({
       problemText: extraction.problemText,
       diagramNotes: extraction.diagramNotes,
       standardAnswer: extraction.standardAnswer,
-      images: imageContexts.map(toProviderImageInput),
+      materials,
     });
     const persistedAnalysis = persistAnalysisResult(body.sessionId, userId, analysis);
 
@@ -51,17 +51,6 @@ export async function POST(request: NextRequest) {
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "AI Solver analysis is not allowed.";
-}
-
-function toProviderImageInput(image: { mimeType: string; dataUrl: string }): AiSolverImageContext {
-  if (!image.mimeType.startsWith("image/")) {
-    throw new Error("Stored image context is not a supported image MIME type.");
-  }
-
-  return {
-    mimeType: image.mimeType as `image/${string}`,
-    data: image.dataUrl,
-  };
 }
 
 function toClientAnalysis(analysis: AiSolverAnalysisResult) {

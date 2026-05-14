@@ -1,0 +1,11 @@
+### Result
+- [Screenshot of element](.playwright-cli/element-2026-05-12T16-17-32-586Z.png)
+### Ran Playwright code
+```js
+// Screenshot element and save it as .playwright-cli/element-2026-05-12T16-17-32-586Z.png
+await page.getByText('逐步推导The problem consists of 7').screenshot({
+  path: '.playwright-cli/element-2026-05-12T16-17-32-586Z.png',
+  scale: 'css',
+  type: 'png'
+});
+```
