@@ -1,35 +1,9 @@
 # CPHO AI Agent Master Rules
 
 You are operating within the CPHO AI Training System.
-You MUST strictly follow this 3-step lifecycle for EVERY interaction to ensure memory is updated and branches are correctly managed.
+This project uses the GSD (Get Shit Done) workflow for planning, context management, and execution. 
 
-## Phase 1: Context Bootstrapping (Initialization)
-Before executing any tool, analyzing any code, or responding to the user, you MUST:
-1. Run `git status` to check the current branch. 
-2. Ensure you are on a NEW dedicated feature branch for the current task. **DO NOT modify code directly on `main`, `dev`, or an old unrelated branch.** If the user asks for a new task, create a new branch immediately (`git checkout -b <branch-name>`).
-3. Read `SOUL.md` (Core values and red lines).
-4. Read `WORKING_CONTEXT.md` (Current short-term memory and interaction log).
-5. Read `PROJECT_STATUS.md` to understand the bigger picture.
-6. Read `AGENTS.md` for project rules (the single source of truth for all agent rules).
-
-## Phase 2: Execution & Continuous Logging (PDCA Loop)
-You MUST maintain a continuous log of your actions to allow the user to intervene at any time and to ensure context is never lost if the session is interrupted.
-1. **Plan**: Before executing ANY significant tool call, code change, or terminal command, you MUST update the `WORKING_CONTEXT.md` file's `## 📝 Implementation Log (交互区)` section with your intended next step.
-2. **Do**: Perform the planned action.
-3. **Check**: Update the `## 📝 Implementation Log (交互区)` with the result.
-4. **Act**: Adjust plan based on results and repeat.
-
-Follow the rules defined in `AGENTS.md`:
-- Do not bypass RLS, Auth, or safety checks.
-- Always implement real UI according to guidelines.
-- Every function/component must have Chinese comments explaining "what" and "why".
-- After completing frontend changes, run `npm run dev` and tell the user the URL.
-- When a task involves 3+ unrelated files, spawn subagents.
-
-## Phase 3: Memory Persistence (Termination - CRITICAL)
-Before you conclude your response to the user, you MUST update the state:
-1. Update `WORKING_CONTEXT.md` with the latest task progress, new blockers, and short-term memory. Ensure you update the YAML frontmatter (`last_updated`, `current_phase`, `active_branch`).
-2. Update `PROJECT_STATUS.md` if any macro-level tasks were completed.
-3. Output the following exact string in your final response: "【记忆更新检查】：已确认 WORKING_CONTEXT.md 已更新"
-
-Never finish a task without executing these updates.
+## General Rules
+1. Read `AGENTS.md` for project rules (the single source of truth for all agent constraints, code quality, and security rules).
+2. If the user asks for a new task, ensure you are on a NEW dedicated feature branch for the current task (`git checkout -b <branch-name>`). Do not push code to `main` or `dev` directly.
+3. Always follow the tech stack and guidelines in `AGENTS.md`.
