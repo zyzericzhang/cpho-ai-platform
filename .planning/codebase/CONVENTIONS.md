@@ -2,6 +2,11 @@
 
 **Date:** 2026-05-16
 
+## Language Policy
+- Use Simplified Chinese for planning documents, product decisions, UI behavior descriptions, and acceptance criteria.
+- Keep technical identifiers in English, including file paths, commands, package names, component names, API names, database field names, and error messages.
+- When reporting implementation results, use Chinese headings with English technical evidence preserved verbatim.
+
 ## Code Style & Patterns
 - **Language**: TypeScript with strict typing. Implicit or explicit `any` usage is heavily discouraged.
 - **File Length**: Single files must not exceed 300 lines. If they do, they must be refactored into smaller modules.

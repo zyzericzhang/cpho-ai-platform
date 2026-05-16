@@ -7,3 +7,8 @@ This project uses the GSD (Get Shit Done) workflow for planning, context managem
 1. Read `AGENTS.md` for project rules (the single source of truth for all agent constraints, code quality, and security rules).
 2. If the user asks for a new task, ensure you are on a NEW dedicated feature branch for the current task (`git checkout -b <branch-name>`). Do not push code to `main` or `dev` directly.
 3. Always follow the tech stack and guidelines in `AGENTS.md`.
+
+## Language Policy
+- Use Simplified Chinese for planning documents, product decisions, UI behavior descriptions, and acceptance criteria.
+- Keep technical identifiers in English, including file paths, commands, package names, component names, API names, database field names, and error messages.
+- When reporting implementation results, use Chinese headings with English technical evidence preserved verbatim.
